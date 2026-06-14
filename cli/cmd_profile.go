@@ -6,17 +6,56 @@ import (
 )
 
 func (a *App) profileCmd() *cobra.Command {
-	var save bool
+	var save, posts, articles bool
 	cmd := &cobra.Command{
 		Use:   "profile <slug-or-url> [more...]",
 		Short: "Fetch one or more public member profiles",
 		Long: "Fetch public member profiles. Accepts a slug (williamhgates), an\n" +
 			"/in/<slug> path, or a full URL. Profiles are parsed from the page's\n" +
-			"Person JSON-LD. Many profiles are gated behind a sign-in wall, in which\n" +
-			"case the command exits with the blocked code.",
+			"Person JSON-LD. With --posts, emit the recent posts carried in the\n" +
+			"page's JSON-LD; with --articles, emit the member's long-form articles.\n" +
+			"Many profiles are gated behind a sign-in wall, in which case the command\n" +
+			"exits with the blocked code.",
 		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			if posts {
+				var out []linkedin.Post
+				var firstErr error
+				fails := 0
+				for _, in := range args {
+					ps, err := a.client.FetchProfilePosts(ctx, a.cache, a.cfg, in)
+					if err != nil {
+						a.progressf("profile %s: %v", in, err)
+						if firstErr == nil {
+							firstErr = err
+						}
+						fails++
+						continue
+					}
+					out = append(out, ps...)
+				}
+				return a.finishMulti(out, len(args), fails, firstErr)
+			}
+			if articles {
+				var out []linkedin.Article
+				var firstErr error
+				fails := 0
+				for _, in := range args {
+					as, err := a.client.FetchProfileArticles(ctx, a.cache, a.cfg, in)
+					if err != nil {
+						a.progressf("profile %s: %v", in, err)
+						if firstErr == nil {
+							firstErr = err
+						}
+						fails++
+						continue
+					}
+					out = append(out, as...)
+				}
+				return a.finishMulti(out, len(args), fails, firstErr)
+			}
+
 			var out []linkedin.Profile
 			var firstErr error
 			fails := 0
@@ -41,6 +80,8 @@ func (a *App) profileCmd() *cobra.Command {
 		},
 	}
 	cmd.Flags().BoolVar(&save, "save", false, "upsert each record into the store")
+	cmd.Flags().BoolVar(&posts, "posts", false, "emit the profile's recent posts instead of the profile record")
+	cmd.Flags().BoolVar(&articles, "articles", false, "emit the profile's long-form articles instead of the profile record")
 	return cmd
 }
 
