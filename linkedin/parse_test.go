@@ -185,6 +185,103 @@ func TestParseCompany(t *testing.T) {
 	}
 }
 
+const companyExtraHTML = `<html><head>
+<script type="application/ld+json">
+{"@context":"http://schema.org","@graph":[
+{"@type":"Organization","name":"Microsoft","url":"https://www.linkedin.com/company/microsoft"}
+]}
+</script></head><body>
+<section>Funding<a href="https://www.crunchbase.com/organization/microsoft/funding_rounds/list?utm_source=linkedin">View all</a>
+<span>2 total rounds</span>
+<a href="https://www.crunchbase.com/funding_round/microsoft-post-ipo-equity--4404bead?utm_source=linkedin">Last round</a>
+</section>
+<ul>
+<li><span class="tag-sm">Primary</span><div id="address-0"><p>1 Microsoft Way</p><p>Redmond, Washington 98052, US</p></div><a href="https://www.bing.com/maps?where=1+Microsoft+Way">Get directions</a></li>
+<li><div id="address-1"><p>299 California Ave</p><p>Palo Alto, California 94306, US</p></div><a href="https://www.bing.com/maps?where=299">Get directions</a></li>
+</ul>
+<ul>
+<li><a href="https://www.linkedin.com/company/github?trk=affiliated-pages"><h3>GitHub</h3></a><p>Software Development</p><p>San Francisco, CA</p></li>
+<li><a href="https://www.linkedin.com/showcase/microsoft-azure/?trk=affiliated-pages"><h3>Microsoft Azure</h3></a><p>Software Development</p><p>Redmond, WA</p></li>
+</ul>
+</body></html>`
+
+func TestParseCompanyFunding(t *testing.T) {
+	doc := docOf(t, companyExtraHTML)
+	c, err := ParseCompany(doc, "microsoft", "https://www.linkedin.com/company/microsoft")
+	if err != nil {
+		t.Fatalf("ParseCompany: %v", err)
+	}
+	if c.FundingRounds != 2 {
+		t.Errorf("funding rounds = %d", c.FundingRounds)
+	}
+	want := "https://www.crunchbase.com/funding_round/microsoft-post-ipo-equity--4404bead"
+	if c.FundingURL != want {
+		t.Errorf("funding url = %q", c.FundingURL)
+	}
+}
+
+func TestParseCompanyLocations(t *testing.T) {
+	doc := docOf(t, companyExtraHTML)
+	var now time.Time
+	locs := ParseCompanyLocations(doc, "microsoft", "https://www.linkedin.com/company/microsoft", now)
+	if len(locs) != 2 {
+		t.Fatalf("locations = %d, want 2", len(locs))
+	}
+	if !locs[0].Primary || locs[0].Street != "1 Microsoft Way" {
+		t.Errorf("primary loc = %+v", locs[0])
+	}
+	if locs[0].Address != "Redmond, Washington 98052, US" {
+		t.Errorf("loc address = %q", locs[0].Address)
+	}
+	if locs[1].Primary {
+		t.Errorf("second loc should not be primary")
+	}
+}
+
+func TestParseCompanyAffiliated(t *testing.T) {
+	doc := docOf(t, companyExtraHTML)
+	var now time.Time
+	refs := ParseCompanyAffiliated(doc, now)
+	if len(refs) != 2 {
+		t.Fatalf("affiliated = %d, want 2", len(refs))
+	}
+	if refs[0].Slug != "github" || refs[0].Name != "GitHub" {
+		t.Errorf("first ref = %+v", refs[0])
+	}
+	if refs[0].URL != "https://www.linkedin.com/company/github" {
+		t.Errorf("first ref url = %q", refs[0].URL)
+	}
+	if refs[0].Industry != "Software Development" || refs[0].Location != "San Francisco, CA" {
+		t.Errorf("first ref detail = %+v", refs[0])
+	}
+	if refs[1].Slug != "microsoft-azure" {
+		t.Errorf("showcase slug = %q", refs[1].Slug)
+	}
+}
+
+const pulseHTML = `<html><head>
+<script type="application/ld+json">
+{"@context":"http://schema.org","@type":"Article",
+ "name":"The real title","headline":"An opening hook from the body",
+ "datePublished":"2026-06-10T00:00:00.000+00:00","dateModified":"2026-06-12T15:22:15.000+00:00",
+ "author":{"@type":"Person","name":"Bill Gates","url":"https://www.linkedin.com/in/williamhgates"},
+ "interactionStatistic":[{"@type":"InteractionCounter","interactionType":"https://schema.org/LikeAction","userInteractionCount":10}]}
+</script></head><body></body></html>`
+
+func TestParsePostTitlePrefersName(t *testing.T) {
+	doc := docOf(t, pulseHTML)
+	p, err := ParsePost(doc, "https://www.linkedin.com/pulse/the-real-title")
+	if err != nil {
+		t.Fatalf("ParsePost: %v", err)
+	}
+	if p.Title != "The real title" {
+		t.Errorf("title = %q, want the name not the headline", p.Title)
+	}
+	if p.Modified != "2026-06-12T15:22:15.000+00:00" {
+		t.Errorf("modified = %q", p.Modified)
+	}
+}
+
 func TestFirstField(t *testing.T) {
 	got := firstField("https://xsolla.com External link for Xsolla")
 	if got != "https://xsolla.com" {

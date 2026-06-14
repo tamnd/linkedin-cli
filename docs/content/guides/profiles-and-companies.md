@@ -66,6 +66,8 @@ URL. From the about panel (a list of label and value pairs) and the og:descripti
 separate number from `employees`), `company_type` (for example "Public Company"),
 `founded` (the year, when the company lists it; some like Microsoft omit it),
 `specialties` (a comma list), and `headquarters` (for example "Sherman Oaks, CA").
+When the company lists funding, the record also carries `funding_rounds` and a
+`funding_url` Crunchbase link to the latest round.
 
 For example `xsolla` lists `founded` 2005 and `headquarters` "Sherman Oaks, CA",
 while `microsoft` omits the founded year:
@@ -74,12 +76,22 @@ while `microsoft` omits the founded year:
 linkedin company xsolla --fields name,founded,headquarters,followers
 ```
 
-Add `--posts` to also collect the company's recent public posts (the
+Add `--posts` to instead collect the company's recent public posts (the
 `DiscussionForumPosting` nodes in the page's JSON-LD graph; the dedicated
 `/posts/` subpage is login-walled, so they come from the main page):
 
 ```bash
 linkedin company microsoft --posts
+```
+
+`--locations` emits the full office list, one record per office, with `primary`
+marking the registered headquarters and `address` holding the city, region,
+postal code, and country line. `--affiliated` emits the related affiliated and
+showcase pages, each with its slug, name, industry, and location:
+
+```bash
+linkedin company microsoft --locations
+linkedin company microsoft --affiliated
 ```
 
 `--save` upserts each company into the store:

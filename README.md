@@ -48,6 +48,8 @@ walled.
 | Profile articles | `profile --articles` | Works via the page's JSON-LD graph |
 | Company page | `company` | Works via the Organization JSON-LD plus the about panel |
 | Company posts | `company --posts` | Works via the page's JSON-LD graph |
+| Company offices | `company --locations` | Works via the page's location cards |
+| Company related pages | `company --affiliated` | Works via the page's affiliated and showcase links |
 | Job posting | `job` | Works via the guest job-detail fragment |
 | Job search | `jobs` | Works via the guest job-search endpoint |
 | Single post or article | `post` | Works best effort via JSON-LD and Open Graph |
@@ -99,6 +101,8 @@ linkedin profile williamhgates --posts      # the member's recent public posts
 linkedin profile williamhgates --articles   # the member's long-form articles
 linkedin company microsoft                  # a company page as a record
 linkedin company microsoft --posts          # the company's recent public posts
+linkedin company microsoft --locations      # the company's offices
+linkedin company microsoft --affiliated     # the company's related pages
 linkedin jobs "golang backend" --location Remote   # job stubs from the guest search
 linkedin job 4391940951                     # a full job posting
 linkedin jobs "data engineer" --hydrate -n 20 --save  # full jobs, into the store
@@ -119,8 +123,11 @@ network.
   `--articles` their long-form articles, both carried in the same JSON-LD graph.
 - `company` reads the **Organization JSON-LD** and the company **about panel**:
   name, description, website, follower count, headquarters address, employee
-  count, industry, size band, type, founding year, specialties, and logo. With
-  `--posts` it also collects the `DiscussionForumPosting` nodes the page carries.
+  count, industry, size band, type, founding year, specialties, logo, and the
+  funding round count with a Crunchbase link to the latest round. With `--posts`
+  it collects the `DiscussionForumPosting` nodes the page carries, with
+  `--locations` the full office list, and with `--affiliated` the related
+  affiliated and showcase pages.
 - `jobs` reads the anonymous **guest job-search endpoint**, paginating in pages
   of 25 until `-n` results are gathered or the endpoint runs dry. With
   `--hydrate` it follows each stub to the full job record.
@@ -136,7 +143,7 @@ When a page is behind the sign-in wall or returns LinkedIn's bot block (HTTP
 | Command | What it does |
 | --- | --- |
 | `profile <slug\|url>...` | Fetch one or more public member profiles (`--posts`, `--articles`, `--save`) |
-| `company <slug\|url>...` | Fetch one or more company pages (`--posts`, `--save`) |
+| `company <slug\|url>...` | Fetch one or more company pages (`--posts`, `--locations`, `--affiliated`, `--save`) |
 | `job <id\|url>...` | Fetch one or more job postings |
 | `jobs <keywords...>` | Search jobs through the guest endpoint (`--location`, `--posted`, `--remote`, `--experience`, `--job-type`, `--sort`, `--hydrate`, `--save`) |
 | `post <url>...` | Fetch one or more public posts or articles (best effort) |

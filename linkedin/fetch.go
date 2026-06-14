@@ -42,6 +42,29 @@ func (c *Client) FetchCompanyPosts(ctx context.Context, cache *Cache, cfg Config
 	return postsFromGraph(doc, pageURL), nil
 }
 
+// FetchCompanyLocations returns the offices a company lists on its page.
+func (c *Client) FetchCompanyLocations(ctx context.Context, cache *Cache, cfg Config, in string) ([]Location, error) {
+	slug := NormalizeCompanySlug(in)
+	pageURL := CompanyURL(slug)
+	doc, err := c.CachingFetchHTML(ctx, cache, cfg, pageURL)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCompanyLocations(doc, slug, pageURL, time.Now()), nil
+}
+
+// FetchCompanyAffiliated returns the related pages (affiliated and showcase) a
+// company links to from its page.
+func (c *Client) FetchCompanyAffiliated(ctx context.Context, cache *Cache, cfg Config, in string) ([]OrgRef, error) {
+	slug := NormalizeCompanySlug(in)
+	pageURL := CompanyURL(slug)
+	doc, err := c.CachingFetchHTML(ctx, cache, cfg, pageURL)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCompanyAffiliated(doc, time.Now()), nil
+}
+
 // FetchProfilePosts returns the recent posts carried as DiscussionForumPosting
 // nodes in a member profile page's JSON-LD graph.
 func (c *Client) FetchProfilePosts(ctx context.Context, cache *Cache, cfg Config, in string) ([]Post, error) {

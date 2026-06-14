@@ -11,6 +11,17 @@ import (
 var reTags = regexp.MustCompile(`<[^>]+>`)
 var reWS = regexp.MustCompile(`\s+`)
 var reFollowers = regexp.MustCompile(`([\d,]+)\s+followers`)
+var reFundingRounds = regexp.MustCompile(`([\d,]+)\s+total round`)
+
+// stripQuery drops the query string and fragment from a URL, leaving the bare
+// scheme/host/path. LinkedIn appends tracking parameters (trk, utm) to its own
+// links that carry no meaning to a stored record.
+func stripQuery(u string) string {
+	if i := strings.IndexAny(u, "?#"); i >= 0 {
+		u = u[:i]
+	}
+	return strings.TrimSpace(u)
+}
 
 // cleanHTML strips tags and unescapes the common HTML entities.
 func cleanHTML(s string) string {

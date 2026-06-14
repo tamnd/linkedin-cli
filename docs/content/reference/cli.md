@@ -72,12 +72,22 @@ about panel and og:description: `followers`, `industry`, `company_size` (the UI
 band like "10,001+ employees", separate from `employees`), `company_type` (for
 example "Public Company"), `founded` (the year, when the company lists it; some
 like Microsoft omit it), `specialties` (a comma list), and `headquarters` (for
-example "Sherman Oaks, CA"). `--posts` also collects the company's recent public
-posts (the `DiscussionForumPosting` nodes in the main page's JSON-LD graph; the
-`/posts/` subpage is login-walled). `--save` upserts each company into the store.
+example "Sherman Oaks, CA"). When the company lists funding, the record also
+carries `funding_rounds` (the round count) and `funding_url` (a Crunchbase link
+to the latest round).
+
+`--posts` instead collects the company's recent public posts (the
+`DiscussionForumPosting` nodes in the main page's JSON-LD graph; the `/posts/`
+subpage is login-walled). `--locations` emits the full office list, one record
+per office, with `primary` marking the registered headquarters and `address`
+holding the city, region, postal code, and country line. `--affiliated` emits the
+related affiliated and showcase pages, each with its `slug`, `name`, `industry`,
+and `location`. `--save` upserts each company into the store.
 
 ```bash
 linkedin company microsoft --posts
+linkedin company microsoft --locations
+linkedin company microsoft --affiliated
 linkedin company xsolla --fields name,founded,headquarters,followers
 ```
 

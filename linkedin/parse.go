@@ -176,7 +176,95 @@ func ParseCompany(doc *goquery.Document, slug, pageURL string) (*Company, error)
 		c.Name = metaContent(doc, "og:title")
 	}
 	parseCompanyAbout(doc, c)
+	parseCompanyFunding(doc, c)
 	return c, nil
+}
+
+// parseCompanyFunding reads the funding card a company page carries: the total
+// number of rounds and the Crunchbase link to the most recent round.
+func parseCompanyFunding(doc *goquery.Document, c *Company) {
+	doc.Find(`a[href*="crunchbase.com/funding_round/"]`).EachWithBreak(func(_ int, a *goquery.Selection) bool {
+		if href, ok := a.Attr("href"); ok {
+			c.FundingURL = stripQuery(href)
+			return false
+		}
+		return true
+	})
+	doc.Find("body").Each(func(_ int, b *goquery.Selection) {
+		if m := reFundingRounds.FindStringSubmatch(b.Text()); len(m) == 2 && c.FundingRounds == 0 {
+			c.FundingRounds = atoiClean(m[1])
+		}
+	})
+}
+
+// ParseCompanyLocations reads the office cards a company page lists, one per
+// "Get directions" entry, marking the primary office (the headquarters).
+func ParseCompanyLocations(doc *goquery.Document, slug, pageURL string, now time.Time) []Location {
+	var out []Location
+	doc.Find(`a[href*="bing.com/maps"], a[href*="google.com/maps"]`).Each(func(_ int, a *goquery.Selection) {
+		li := a.Closest("li")
+		if li.Length() == 0 {
+			return
+		}
+		var lines []string
+		li.Find(`div[id^="address"] p`).Each(func(_ int, p *goquery.Selection) {
+			if s := cleanText(p.Text()); s != "" {
+				lines = append(lines, s)
+			}
+		})
+		if len(lines) == 0 {
+			return
+		}
+		primary := strings.Contains(li.Find("span").Text(), "Primary")
+		loc := Location{Slug: slug, Primary: primary, URL: pageURL, FetchedAt: now}
+		loc.Street = lines[0]
+		if len(lines) > 1 {
+			loc.Address = strings.Join(lines[1:], ", ")
+		}
+		out = append(out, loc)
+	})
+	return out
+}
+
+// ParseCompanyAffiliated reads the related pages a company links to (affiliated
+// pages and showcase pages), each with its name, industry, and location.
+func ParseCompanyAffiliated(doc *goquery.Document, now time.Time) []OrgRef {
+	var out []OrgRef
+	seen := map[string]bool{}
+	doc.Find(`a[href*="trk=affiliated-pages"]`).Each(func(_ int, a *goquery.Selection) {
+		href, ok := a.Attr("href")
+		if !ok {
+			return
+		}
+		url := stripQuery(href)
+		if seen[url] {
+			return
+		}
+		seen[url] = true
+		ref := OrgRef{
+			Slug:      slugFromAffiliationURL(url),
+			URL:       url,
+			FetchedAt: now,
+		}
+		card := a.Closest("li")
+		if card.Length() == 0 {
+			card = a
+		}
+		if h := strings.TrimSpace(card.Find("h3").First().Text()); h != "" {
+			ref.Name = cleanText(h)
+		} else {
+			ref.Name = cleanText(a.Text())
+		}
+		ps := card.Find("p")
+		if ps.Length() > 0 {
+			ref.Industry = cleanText(ps.Eq(0).Text())
+		}
+		if ps.Length() > 1 {
+			ref.Location = cleanText(ps.Eq(1).Text())
+		}
+		out = append(out, ref)
+	})
+	return out
 }
 
 // parseCompanyAbout fills the fields the Organization JSON-LD leaves out by
@@ -249,13 +337,25 @@ func firstField(s string) string {
 // ── Posts (best effort) ─────────────────────────────────────────────────────
 
 type postLD struct {
+	Name                 string          `json:"name"`
 	Headline             string          `json:"headline"`
 	Text                 string          `json:"text"`
 	DatePublished        string          `json:"datePublished"`
+	DateModified         string          `json:"dateModified"`
 	URL                  string          `json:"url"`
 	Image                json.RawMessage `json:"image"`
 	Author               json.RawMessage `json:"author"`
 	InteractionStatistic json.RawMessage `json:"interactionStatistic"`
+}
+
+// postTitle prefers the JSON-LD name (the real headline on a pulse article)
+// and falls back to the headline field (which a feed post carries instead, and
+// which a pulse page reuses for the body's opening hook).
+func postTitle(name, headline string) string {
+	if t := cleanText(name); t != "" {
+		return t
+	}
+	return cleanText(headline)
 }
 
 type authorLD struct {
@@ -287,9 +387,10 @@ func ParsePost(doc *goquery.Document, pageURL string) (*Post, error) {
 			a := parseAuthor(p.Author)
 			post.Author = strings.TrimSpace(a.Name)
 			post.AuthorURL = a.URL
-			post.Title = cleanText(p.Headline)
+			post.Title = postTitle(p.Name, p.Headline)
 			post.Text = cleanText(p.Text)
 			post.Published = p.DatePublished
+			post.Modified = p.DateModified
 			post.ImageURL = ldString(p.Image)
 			post.Likes = interactionCount(p.InteractionStatistic, "LikeAction")
 			post.Comments = interactionCount(p.InteractionStatistic, "CommentAction")
@@ -321,9 +422,10 @@ func postFromNode(raw json.RawMessage, now time.Time) (Post, bool) {
 		URL:       canonicalURL(p.URL),
 		Author:    strings.TrimSpace(a.Name),
 		AuthorURL: a.URL,
-		Title:     cleanText(p.Headline),
+		Title:     postTitle(p.Name, p.Headline),
 		Text:      cleanText(p.Text),
 		Published: p.DatePublished,
+		Modified:  p.DateModified,
 		ImageURL:  ldString(p.Image),
 		Likes:     interactionCount(p.InteractionStatistic, "LikeAction"),
 		Comments:  interactionCount(p.InteractionStatistic, "CommentAction"),
@@ -335,9 +437,11 @@ func postFromNode(raw json.RawMessage, now time.Time) (Post, bool) {
 // ── Articles ────────────────────────────────────────────────────────────────
 
 type articleLD struct {
+	Name                 string          `json:"name"`
 	Headline             string          `json:"headline"`
 	URL                  string          `json:"url"`
 	DatePublished        string          `json:"datePublished"`
+	DateModified         string          `json:"dateModified"`
 	Image                json.RawMessage `json:"image"`
 	Author               json.RawMessage `json:"author"`
 	InteractionStatistic json.RawMessage `json:"interactionStatistic"`
@@ -352,10 +456,11 @@ func articleFromNode(raw json.RawMessage, now time.Time) (Article, bool) {
 	au := parseAuthor(a.Author)
 	return Article{
 		URL:       canonicalURL(a.URL),
-		Title:     cleanText(a.Headline),
+		Title:     postTitle(a.Name, a.Headline),
 		Author:    strings.TrimSpace(au.Name),
 		AuthorURL: au.URL,
 		Published: a.DatePublished,
+		Modified:  a.DateModified,
 		Reactions: interactionCount(a.InteractionStatistic, "LikeAction"),
 		Comments:  interactionCount(a.InteractionStatistic, "CommentAction"),
 		ImageURL:  ldString(a.Image),

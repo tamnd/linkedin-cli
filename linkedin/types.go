@@ -38,27 +38,51 @@ type Affiliation struct {
 // headquarters, founded, specialties) come from the page's about panel, which
 // carries detail the JSON-LD omits.
 type Company struct {
-	Slug         string    `json:"slug"`
-	URL          string    `json:"url"`
-	Name         string    `json:"name"`
-	Description  string    `json:"description"`
-	Slogan       string    `json:"slogan"`
-	Website      string    `json:"website"`
-	Followers    int64     `json:"followers"`
-	Employees    int64     `json:"employees"`
-	Industry     string    `json:"industry"`
-	CompanySize  string    `json:"company_size"`
-	CompanyType  string    `json:"company_type"`
-	Founded      string    `json:"founded"`
-	Specialties  string    `json:"specialties"`
-	Headquarters string    `json:"headquarters"`
-	Street       string    `json:"street"`
-	Locality     string    `json:"locality"`
-	Region       string    `json:"region"`
-	PostalCode   string    `json:"postal_code"`
-	Country      string    `json:"country"`
-	LogoURL      string    `json:"logo_url"`
-	FetchedAt    time.Time `json:"fetched_at"`
+	Slug          string    `json:"slug"`
+	URL           string    `json:"url"`
+	Name          string    `json:"name"`
+	Description   string    `json:"description"`
+	Slogan        string    `json:"slogan"`
+	Website       string    `json:"website"`
+	Followers     int64     `json:"followers"`
+	Employees     int64     `json:"employees"`
+	Industry      string    `json:"industry"`
+	CompanySize   string    `json:"company_size"`
+	CompanyType   string    `json:"company_type"`
+	Founded       string    `json:"founded"`
+	Specialties   string    `json:"specialties"`
+	Headquarters  string    `json:"headquarters"`
+	Street        string    `json:"street"`
+	Locality      string    `json:"locality"`
+	Region        string    `json:"region"`
+	PostalCode    string    `json:"postal_code"`
+	Country       string    `json:"country"`
+	LogoURL       string    `json:"logo_url"`
+	FundingRounds int       `json:"funding_rounds"`
+	FundingURL    string    `json:"funding_url"`
+	FetchedAt     time.Time `json:"fetched_at"`
+}
+
+// Location is one office a company lists on its page. The full set is read with
+// `company --locations`; the primary office is the registered headquarters.
+type Location struct {
+	Slug      string    `json:"slug"`
+	Primary   bool      `json:"primary"`
+	Street    string    `json:"street"`
+	Address   string    `json:"address"`
+	URL       string    `json:"url"`
+	FetchedAt time.Time `json:"fetched_at"`
+}
+
+// OrgRef is a related page a company links to (an affiliated page or showcase),
+// read with `company --affiliated`.
+type OrgRef struct {
+	Slug      string    `json:"slug"`
+	Name      string    `json:"name"`
+	URL       string    `json:"url"`
+	Industry  string    `json:"industry"`
+	Location  string    `json:"location"`
+	FetchedAt time.Time `json:"fetched_at"`
 }
 
 // Job is a single job posting, parsed from the guest job-detail fragment.
@@ -78,7 +102,6 @@ type Job struct {
 	JobFunction    string    `json:"job_function"`
 	Industries     string    `json:"industries"`
 	Description    string    `json:"description"`
-	ApplyURL       string    `json:"apply_url"`
 	FetchedAt      time.Time `json:"fetched_at"`
 }
 
@@ -107,6 +130,7 @@ type Post struct {
 	Title     string    `json:"title"`
 	Text      string    `json:"text"`
 	Published string    `json:"published"`
+	Modified  string    `json:"modified"`
 	Likes     int64     `json:"likes"`
 	Comments  int64     `json:"comments"`
 	ImageURL  string    `json:"image_url"`
@@ -121,6 +145,7 @@ type Article struct {
 	Author    string    `json:"author"`
 	AuthorURL string    `json:"author_url"`
 	Published string    `json:"published"`
+	Modified  string    `json:"modified"`
 	Reactions int64     `json:"reactions"`
 	Comments  int64     `json:"comments"`
 	ImageURL  string    `json:"image_url"`
