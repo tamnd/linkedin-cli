@@ -149,9 +149,10 @@ func (c *Client) doGet(ctx context.Context, rawurl string) ([]byte, int, error) 
 	req.Header.Set("User-Agent", c.userAgents[rand.Intn(len(c.userAgents))])
 	req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
 	req.Header.Set("Accept-Language", "en-US,en;q=0.9")
-	// The guest job endpoints expect a same-site referer; sending it on every
-	// request is harmless and matches what a browser does.
-	req.Header.Set("Referer", BaseURL+"/")
+	// Do not send a www.linkedin.com self-referer. LinkedIn reads a same-site
+	// referer on an anonymous request as a scraping signal and answers the
+	// profile and company HTML pages with HTTP 999. The guest job endpoints do
+	// not need one either, so the request carries no Referer at all.
 
 	resp, err := c.http.Do(req)
 	if err != nil {
