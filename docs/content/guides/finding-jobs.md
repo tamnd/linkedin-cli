@@ -51,7 +51,7 @@ A stub is thin. Add `--hydrate` to follow each one to its detail page and emit a
 full Job record instead:
 
 ```bash
-linkedin jobs "golang engineer" --hydrate -n 10 --format json
+linkedin jobs "golang engineer" --hydrate -n 10 --output json
 ```
 
 With `--hydrate`, `--save` upserts each job into the local store as it goes:
@@ -73,7 +73,7 @@ description, and the criteria (seniority, employment type, job function,
 industries). It takes several ids at once:
 
 ```bash
-linkedin job 3801234567 3809876543 --format csv
+linkedin job 3801234567 3809876543 --output csv
 ```
 
 ## From a search to a record
@@ -81,7 +81,7 @@ linkedin job 3801234567 3809876543 --format csv
 A stub carries the job id, so a search composes straight into a detail lookup:
 
 ```bash
-linkedin jobs "golang engineer" --format jsonl | jq -r .job_id | head -1
+linkedin jobs "golang engineer" --output jsonl | jq -r .job_id | head -1
 # then: linkedin job <that id>
 ```
 
