@@ -11,7 +11,7 @@ linkedin <command> [args] [flags]
 Run `linkedin <command> --help` for the full flag list on any command. This page
 is the map. `profile`, `company`, `job`, and `jobs` work for anonymous visitors,
 and `post` is best effort but generally returns data for single public posts and
-articles. When a page is behind the sign-in wall, linkedin exits with code 5. See
+articles. When a page is behind the sign-in wall, linkedin exits with code 4. See
 [troubleshooting](/reference/troubleshooting/).
 
 ## Commands
@@ -38,8 +38,8 @@ linkedin profile <slug|url> [slug|url ...] [flags]
 
 Fetches one or more public member profiles, parsed from the page's Person
 JSON-LD. Accepts a slug (`williamhgates`), an `/in/<slug>` path, or a full URL.
-Profile pages return 200 and work; an exit 5 here usually means IP-level
-rate-limiting (slow down with `--delay` or lend `--cookies`).
+Profile pages return 200 and work; an exit 4 here usually means IP-level
+rate-limiting (slow down with `--rate` or lend `--cookies`).
 
 Fields include the name, headline, location, country, followers, current and past
 positions (`works_for`, `alumni_of`), `member_of` (boards and groups, an array of
@@ -55,7 +55,7 @@ There is no connection count; LinkedIn does not expose one anonymously.
 If both `--posts` and `--articles` are given, `--posts` wins.
 
 ```bash
-linkedin profile williamhgates --format json
+linkedin profile williamhgates --output json
 linkedin profile williamhgates --posts
 ```
 
@@ -103,7 +103,7 @@ date, full description, and criteria (seniority, employment type, job function,
 industries).
 
 ```bash
-linkedin job 3801234567 --format json
+linkedin job 3801234567 --output json
 ```
 
 ## jobs
@@ -142,7 +142,7 @@ linkedin post <url> [url ...]
 Fetches a single public post or article, best effort: JSON-LD first (the
 `DiscussionForumPosting` or `Article` node) with an Open Graph backstop. Single
 public posts and articles generally return data; when one is walled, linkedin
-exits 5.
+exits 4.
 
 ```bash
 linkedin post https://www.linkedin.com/posts/example-activity-123456789
@@ -216,21 +216,21 @@ the full list and their defaults.
 
 | Flag | Meaning |
 |---|---|
-| `-f, --format` | Output format (default table on a TTY, jsonl piped) |
-| `-j, --jsonl` | Shorthand for `--format jsonl` |
+| `-o, --output` | Output format, `auto`/`list`/`table`/`markdown`/`json`/`jsonl`/`csv`/`tsv`/`url`/`raw` (default `auto`: list on a TTY, jsonl piped) |
 | `--fields` | Comma-separated columns to include |
 | `--no-header` | Omit the header row in table/csv/tsv output |
 | `--template` | Go text/template applied per record |
 | `--color` | `auto`, `always`, or `never` |
 | `-n, --limit` | Limit number of results (`0` means no limit) |
 | `-q, --quiet` | Suppress progress on stderr |
-| `--workers` | Concurrent workers for multi-fetch (default 2) |
-| `--delay` | Minimum spacing between requests (default 2s) |
+| `-v, --verbose` | Increase verbosity (repeatable) |
+| `--rate` | Minimum spacing between requests (default 2s) |
 | `--timeout` | Per-request timeout (default 30s) |
 | `--retries` | Retry attempts on 429/5xx (default 3) |
 | `--cache-ttl` | On-disk cache freshness window (default 24h) |
 | `--no-cache` | Bypass the on-disk page cache for this run |
 | `--refresh` | Force a re-fetch and overwrite the cache |
 | `--data-dir` | Root dir for cache and store (env `LINKEDIN_DATA_DIR`) |
-| `--store` | SQLite store path (default `<data-dir>/linkedin.db`) |
 | `--cookies` | Netscape cookie jar to lend a session |
+| `--dry-run` | Print actions, do not perform them |
+| `--profile` | Named profile to load |

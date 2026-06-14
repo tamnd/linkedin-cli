@@ -23,12 +23,12 @@ store. It defaults to the XDG data directory (for example
 
 ## The store
 
-Records you save with `--save` land in a SQLite file, by default
-`<data-dir>/linkedin.db`. Point that single file somewhere else with `--store`,
-which is handy when you want one corpus per project:
+Records you save with `--save` land in a SQLite file fixed at
+`<data-dir>/linkedin.db`. To keep one corpus per project, point the whole data
+dir at a per-project directory with `--data-dir`; the store follows it:
 
 ```bash
-linkedin company microsoft --save --store ~/projects/hiring/linkedin.db
+linkedin company microsoft --save --data-dir ~/projects/hiring
 ```
 
 `db path`, `db count`, and `db query` all read this file.
@@ -62,13 +62,11 @@ public site:
 
 | Flag | Default | Meaning |
 |---|---|---|
-| `--workers` | `2` | Concurrent workers for multi-fetch |
-| `--delay` | `2s` | Minimum spacing between requests |
+| `--rate` | `2s` | Minimum spacing between requests |
 | `--timeout` | `30s` | Per-request timeout |
 | `--retries` | `3` | Retry attempts on 429/5xx |
 
-Raise `--workers` and lower `--delay` only when you have a reason to, and keep
-them modest.
+Lower `--rate` only when you have a reason to, and keep it modest.
 
 ## Environment variables
 
@@ -80,31 +78,32 @@ them modest.
 
 | Flag | Default | Meaning |
 |---|---|---|
-| `-f, --format` | auto | `table`, `json`, `jsonl`, `csv`, `tsv`, `url`, `raw` |
-| `-j, --jsonl` | off | Shorthand for `--format jsonl` |
+| `-o, --output` | auto | `auto`, `list`, `table`, `markdown`, `json`, `jsonl`, `csv`, `tsv`, `url`, `raw` (auto: list on a TTY, jsonl piped) |
 | `--fields` | all | Comma-separated columns to include |
 | `--no-header` | off | Omit the header row in table/csv/tsv output |
 | `--template` | none | Go text/template applied per record |
 | `--color` | auto | `auto`, `always`, or `never` |
 | `-n, --limit` | `0` | Limit number of results; `0` is no limit |
 | `-q, --quiet` | off | Suppress progress on stderr |
-| `--workers` | `2` | Concurrent workers for multi-fetch |
-| `--delay` | `2s` | Minimum spacing between requests |
+| `-v, --verbose` | off | Increase verbosity (repeatable) |
+| `--rate` | `2s` | Minimum spacing between requests |
 | `--timeout` | `30s` | Per-request timeout |
 | `--retries` | `3` | Retry attempts on 429/5xx |
 | `--cache-ttl` | `24h` | On-disk cache freshness window |
 | `--no-cache` | off | Bypass the on-disk page cache |
 | `--refresh` | off | Force a re-fetch and overwrite the cache |
 | `--data-dir` | XDG | Root dir for cache and store (env `LINKEDIN_DATA_DIR`) |
-| `--store` | `<data-dir>/linkedin.db` | SQLite store path |
 | `--cookies` | none | Netscape cookie jar |
+| `--dry-run` | off | Print actions, do not perform them |
+| `--profile` | none | Named profile to load |
 
 ## Output auto-detection
 
-The default output format adapts to where it is going: an aligned table when the
-output is a terminal, JSONL when it is piped. That keeps interactive use readable
-and scripted use parseable without you setting `--format` either time. See
-[output formats](/reference/output/) for the full set.
+The default output format adapts to where it is going: the readable list view
+when the output is a terminal, JSONL when it is piped. That keeps interactive use
+readable and scripted use parseable without you setting `--output` either time.
+Reach for `-o table` for the bordered grid or `-o markdown` for a paste-ready
+table. See [output formats](/reference/output/) for the full set.
 
 ## Exit codes
 
@@ -113,8 +112,9 @@ linkedin returns a stable exit code so scripts can branch on the outcome:
 | Code | Meaning |
 |---|---|
 | `0` | OK |
-| `1` | Error |
-| `2` | Usage error |
-| `3` | No data (nothing matched) |
-| `4` | Partial (some items failed) |
-| `5` | Blocked (behind the sign-in wall) |
+| `1` | Error (generic failure) |
+| `2` | Usage error (bad flags or arguments) |
+| `3` | No results (nothing matched) |
+| `4` | Auth required (behind the sign-in wall; pass `--cookies`) |
+| `5` | Rate limited (HTTP 429 after retries) |
+| `6` | Not found (a 404 or an unknown id) |

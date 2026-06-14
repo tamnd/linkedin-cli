@@ -5,26 +5,28 @@ weight: 30
 ---
 
 Every command that emits records renders through the same formatter. Pick a
-format with `--format` (or `-f`), or let linkedin choose: a table when writing to
-a terminal, JSONL when piped.
+format with `--output` (or `-o`), or let linkedin choose: the readable list view
+when writing to a terminal, JSONL when piped.
 
 ## Formats
 
 ```bash
-linkedin jobs "golang engineer" -f table   # aligned columns for reading
-linkedin jobs "golang engineer" -f jsonl   # one JSON object per line, for piping
-linkedin jobs "golang engineer" -f json    # a single JSON array
-linkedin jobs "golang engineer" -f csv     # spreadsheet friendly
-linkedin jobs "golang engineer" -f tsv     # tab-separated
-linkedin jobs "golang engineer" -f url     # just the LinkedIn URL of each row
-linkedin jobs "golang engineer" -f raw     # the underlying bytes, unformatted
+linkedin jobs "golang engineer" -o list     # a readable per-record section view
+linkedin jobs "golang engineer" -o table    # bordered, aligned columns
+linkedin jobs "golang engineer" -o markdown # a GitHub-flavored pipe table
+linkedin jobs "golang engineer" -o jsonl    # one JSON object per line, for piping
+linkedin jobs "golang engineer" -o json     # a single JSON array
+linkedin jobs "golang engineer" -o csv      # spreadsheet friendly
+linkedin jobs "golang engineer" -o tsv      # tab-separated
+linkedin jobs "golang engineer" -o url      # just the LinkedIn URL of each row
+linkedin jobs "golang engineer" -o raw      # the underlying bytes, unformatted
 ```
-
-`-j` is shorthand for `-f jsonl`.
 
 | Format | Best for |
 |---|---|
-| `table` | Reading on a terminal |
+| `list` | Reading on a terminal, the default there |
+| `table` | A bordered, aligned grid |
+| `markdown` | Pasting into a doc or an issue |
 | `jsonl` | Piping into another tool, one object at a time |
 | `json` | Loading a whole result as an array |
 | `csv` / `tsv` | Spreadsheets and quick column math |
@@ -58,11 +60,13 @@ Because the default adapts to the destination, the same command reads well by
 hand and parses cleanly in a pipe:
 
 ```bash
-linkedin jobs "golang engineer"                  # a table, because this is a terminal
+linkedin jobs "golang engineer"                  # a list, because this is a terminal
 linkedin jobs "golang engineer" | jq -r .url     # JSONL, because this is a pipe
 ```
 
-You only reach for `--format` when you want something other than that default.
+You only reach for `--output` when you want something other than that default,
+for example `-o table` for the bordered grid or `-o markdown` for a paste-ready
+table.
 
 ## Color
 

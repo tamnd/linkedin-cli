@@ -17,7 +17,7 @@ linkedin post https://www.linkedin.com/posts/example-activity-123456789
 `post` reads a single public post or article, JSON-LD first (the page's
 `DiscussionForumPosting` or `Article` node) with an Open Graph backstop. It is
 best effort, but single public posts and articles generally return data. When one
-is walled, linkedin exits with code 5 ("blocked"). Lending a session with
+is walled, linkedin exits with code 4 ("auth required"). Lending a session with
 `--cookies` gets more of them through:
 
 ```bash

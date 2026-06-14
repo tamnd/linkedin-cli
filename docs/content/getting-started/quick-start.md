@@ -25,7 +25,7 @@ Want full job records instead of thin stubs? Add `--hydrate` to follow each stub
 to its detail page:
 
 ```bash
-linkedin jobs "golang engineer" --hydrate -n 10 --format json
+linkedin jobs "golang engineer" --hydrate -n 10 --output json
 ```
 
 ## 2. Fetch one job in full
@@ -39,7 +39,7 @@ applicant count, posting date, full description, and criteria (seniority,
 employment type, job function, industries). The same record as JSON:
 
 ```bash
-linkedin job 3801234567 --format json
+linkedin job 3801234567 --output json
 ```
 
 ## 3. Look up a profile
@@ -58,9 +58,9 @@ recent posts, or `--articles` for their long-form articles (if both are given,
 linkedin profile williamhgates --posts
 ```
 
-Profile and company pages return 200 and work. If you do see exit code 5
-("blocked") on a normally-working surface, it usually means IP-level
-rate-limiting; slow down with `--delay` or lend a signed-in session with
+Profile and company pages return 200 and work. If you do see exit code 4
+("auth required") on a normally-working surface, it usually means IP-level
+rate-limiting; slow down with `--rate` or lend a signed-in session with
 `--cookies` (see [troubleshooting](/reference/troubleshooting/)).
 
 ## 4. Read a company page
@@ -91,10 +91,11 @@ profile	williamhgates
 
 ## 6. Compose
 
-Output that pipes is the point. Pull the apply URLs off a job search:
+Output that pipes is the point. On a terminal you get a readable list view, and
+JSONL when piped. Pull the apply URLs off a job search:
 
 ```bash
-linkedin jobs "golang engineer" --format jsonl | jq -r .url
+linkedin jobs "golang engineer" --output jsonl | jq -r .url
 ```
 
 Keep just a couple of fields off a company:

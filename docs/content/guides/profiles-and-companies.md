@@ -19,8 +19,8 @@ linkedin profile williamhgates
 several at once:
 
 ```bash
-linkedin profile williamhgates --format json
-linkedin profile williamhgates /in/satyanadella --format csv
+linkedin profile williamhgates --output json
+linkedin profile williamhgates /in/satyanadella --output csv
 linkedin profile https://www.linkedin.com/in/williamhgates
 ```
 
@@ -37,7 +37,7 @@ records. If you pass both, `--posts` wins:
 
 ```bash
 linkedin profile williamhgates --posts
-linkedin profile williamhgates --articles --format json
+linkedin profile williamhgates --articles --output json
 ```
 
 Add `--save` to upsert each profile into the local store:
@@ -55,7 +55,7 @@ linkedin company microsoft
 Like `profile`, it accepts a slug or a URL and takes several at once:
 
 ```bash
-linkedin company microsoft github --format csv
+linkedin company microsoft github --output csv
 ```
 
 A company record carries the Organization JSON-LD fields plus the company about
@@ -104,16 +104,16 @@ linkedin company microsoft --save
 
 `profile` and `company` both return 200 and work reliably. linkedin sends no
 `Referer` header, which is what avoids LinkedIn's HTTP 999 bot block on these
-pages. So you should not normally see a wall here. If you do see exit code 5
-("blocked") on one of these, it usually means IP-level rate-limiting rather than
-the page itself being walled.
+pages. So you should not normally see a wall here. If you do see exit code 4
+("auth required") on one of these, it usually means IP-level rate-limiting rather
+than the page itself being walled.
 
-Slowing down is the first fix (the default `--delay` is already two seconds; raise
+Slowing down is the first fix (the default `--rate` is already two seconds; raise
 it). Lending the request a real session helps too: export a Netscape `cookies.txt`
 jar from a signed-in browser and pass it:
 
 ```bash
-linkedin profile williamhgates --delay 5s
+linkedin profile williamhgates --rate 5s
 linkedin profile williamhgates --cookies ~/cookies.txt
 ```
 

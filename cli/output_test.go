@@ -4,76 +4,100 @@ import (
 	"bytes"
 	"strings"
 	"testing"
+
+	"github.com/tamnd/any-cli/kit"
+	"github.com/tamnd/any-cli/kit/render"
 )
 
-type sample struct {
-	BookID string   `json:"book_id"`
-	Title  string   `json:"title"`
-	Tags   []string `json:"tags"`
-	URL    string   `json:"url"`
+// TestOutDefaultFormat pins the one place linkedin differs from kit's default:
+// with no -o, a terminal gets the readable list view and a pipe gets jsonl, but
+// an explicit -o or --template always wins.
+func TestOutDefaultFormat(t *testing.T) {
+	cases := []struct {
+		name string
+		out  kit.OutputOptions
+		want render.Format
+	}{
+		{"tty default is list", kit.OutputOptions{IsTTY: true}, render.List},
+		{"piped default is jsonl", kit.OutputOptions{IsTTY: false}, render.JSONL},
+		{"explicit table on a tty wins", kit.OutputOptions{Format: "table", IsTTY: true}, render.Table},
+		{"explicit json piped wins", kit.OutputOptions{Format: "json", IsTTY: false}, render.JSON},
+		{"template forces template", kit.OutputOptions{Template: "{{.url}}", IsTTY: true}, render.Template},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			a := &App{st: &kit.State{Output: c.out}}
+			r, err := a.out()
+			if err != nil {
+				t.Fatalf("out(): %v", err)
+			}
+			if got := r.Format(); got != c.want {
+				t.Errorf("Format() = %q, want %q", got, c.want)
+			}
+		})
+	}
 }
 
-func render(t *testing.T, format Format, fields []string, noHeader bool, tmpl string, recs any) string {
+// TestRenderContract spot-checks the shared renderer against the row shapes the
+// commands feed it, so a future kit bump that changes formatting is caught here.
+func TestRenderContract(t *testing.T) {
+	row := Row{
+		Cols:  []string{"slug", "name", "url"},
+		Vals:  []string{"acme", "Acme", "https://example.com/acme"},
+		Value: map[string]any{"slug": "acme", "name": "Acme", "url": "https://example.com/acme"},
+	}
+
+	t.Run("jsonl one line per record", func(t *testing.T) {
+		out := renderRows(t, render.Options{Format: render.JSONL}, row, row)
+		lines := strings.Split(strings.TrimSpace(out), "\n")
+		if len(lines) != 2 {
+			t.Fatalf("got %d lines, want 2: %q", len(lines), out)
+		}
+		if !strings.Contains(lines[0], `"slug":"acme"`) {
+			t.Errorf("line 0 = %q", lines[0])
+		}
+	})
+
+	t.Run("csv with header", func(t *testing.T) {
+		out := renderRows(t, render.Options{Format: render.CSV}, row)
+		if !strings.HasPrefix(out, "slug,name,url\n") {
+			t.Errorf("csv header missing: %q", out)
+		}
+		if !strings.Contains(out, "acme,Acme,") {
+			t.Errorf("csv body missing: %q", out)
+		}
+	})
+
+	t.Run("url emits the url column", func(t *testing.T) {
+		out := renderRows(t, render.Options{Format: render.URL}, row)
+		if strings.TrimSpace(out) != "https://example.com/acme" {
+			t.Errorf("url = %q", out)
+		}
+	})
+
+	t.Run("template per record", func(t *testing.T) {
+		out := renderRows(t, render.Options{Template: "{{.slug}}"}, row)
+		if strings.TrimSpace(out) != "acme" {
+			t.Errorf("template = %q", out)
+		}
+	})
+}
+
+func renderRows(t *testing.T, o render.Options, rows ...Row) string {
 	t.Helper()
 	var buf bytes.Buffer
-	if err := NewRenderer(&buf, format, fields, noHeader, tmpl).Render(recs); err != nil {
-		t.Fatalf("Render(%s): %v", format, err)
+	o.Writer = &buf
+	r, err := render.New(o)
+	if err != nil {
+		t.Fatalf("render.New: %v", err)
+	}
+	for _, row := range rows {
+		if err := r.Emit(row); err != nil {
+			t.Fatalf("Emit: %v", err)
+		}
+	}
+	if err := r.Flush(); err != nil {
+		t.Fatalf("Flush: %v", err)
 	}
 	return buf.String()
-}
-
-func TestRenderJSONL(t *testing.T) {
-	recs := []sample{
-		{BookID: "1", Title: "A", Tags: []string{"x"}, URL: "u1"},
-		{BookID: "2", Title: "B", URL: "u2"},
-	}
-	out := render(t, FormatJSONL, nil, false, "", recs)
-	lines := strings.Split(strings.TrimSpace(out), "\n")
-	if len(lines) != 2 {
-		t.Fatalf("got %d lines, want 2: %q", len(lines), out)
-	}
-	if !strings.Contains(lines[0], `"book_id":"1"`) {
-		t.Errorf("line 0 = %q", lines[0])
-	}
-}
-
-func TestRenderCSVFields(t *testing.T) {
-	recs := []sample{{BookID: "1", Title: "A", URL: "u1"}}
-	out := render(t, FormatCSV, []string{"book_id", "title"}, false, "", recs)
-	want := "book_id,title\n1,A\n"
-	if out != want {
-		t.Errorf("CSV = %q, want %q", out, want)
-	}
-}
-
-func TestRenderCSVNoHeader(t *testing.T) {
-	recs := []sample{{BookID: "1", Title: "A"}}
-	out := render(t, FormatCSV, []string{"book_id", "title"}, true, "", recs)
-	if out != "1,A\n" {
-		t.Errorf("CSV no-header = %q", out)
-	}
-}
-
-func TestRenderURL(t *testing.T) {
-	recs := []sample{{URL: "u1"}, {URL: ""}, {URL: "u3"}}
-	out := render(t, FormatURL, nil, false, "", recs)
-	if out != "u1\nu3\n" {
-		t.Errorf("URL = %q, want u1\\nu3\\n", out)
-	}
-}
-
-func TestRenderTemplate(t *testing.T) {
-	recs := []sample{{Title: "A", Tags: []string{"x", "y"}}}
-	out := render(t, FormatTable, nil, false, `{{.Title}}: {{join "," .Tags}}`, recs)
-	if strings.TrimSpace(out) != "A: x,y" {
-		t.Errorf("template = %q", out)
-	}
-}
-
-func TestRenderSingleStruct(t *testing.T) {
-	// A non-slice record is wrapped into a one-element slice.
-	out := render(t, FormatJSONL, nil, false, "", sample{BookID: "9", Title: "Z"})
-	if !strings.Contains(out, `"book_id":"9"`) {
-		t.Errorf("single struct = %q", out)
-	}
 }

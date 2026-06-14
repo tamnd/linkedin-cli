@@ -2,8 +2,8 @@
 
 A command line for public [LinkedIn](https://www.linkedin.com) data. One binary
 that turns member profiles, company pages, job postings, and the guest job
-search into rich, structured records as a table, JSON, JSONL, CSV, TSV, or plain
-URLs.
+search into rich, structured records as a list, table, Markdown, JSON, JSONL,
+CSV, TSV, or plain URLs.
 
 ```
 linkedin jobs "golang backend" --location Remote -n 5
@@ -61,7 +61,7 @@ linkedin sends no referer at all and the profile and company pages come back
 normally. The dedicated activity and `/posts/` subpages still redirect to the
 sign-in wall, so posts are read from the main page's JSON-LD instead.
 
-When a page is gated, linkedin exits with code 5 and you can lend a signed-in
+When a page is gated, linkedin exits with code 4 and you can lend a signed-in
 session with `--cookies` (a Netscape `cookies.txt` jar exported from your
 browser).
 
@@ -136,7 +136,7 @@ network.
   block (seniority, employment type, function, industries).
 
 When a page is behind the sign-in wall or returns LinkedIn's bot block (HTTP
-999), linkedin exits cleanly with code 5.
+999), linkedin exits cleanly with code 4.
 
 ## Commands
 
@@ -156,15 +156,17 @@ When a page is behind the sign-in wall or returns LinkedIn's bot block (HTTP
 
 ## Output
 
-Output is a table on a terminal and JSONL when piped, so it drops straight into
-a pipeline. Pick any format explicitly with `-f`:
+Output is a readable list view on a terminal and JSONL when piped, so it drops
+straight into a pipeline. Use `-o table` for the bordered grid and `-o markdown`
+for a paste-ready table. Pick any format explicitly with `-o`:
 
 ```sh
-linkedin company microsoft -f json           # pretty JSON array
-linkedin jobs "golang" -f jsonl              # one JSON object per line
-linkedin profile williamhgates -f csv        # CSV with a header row
-linkedin jobs "golang" -f url                 # just the job URLs
-linkedin job 4391940951 --fields title,company,location -f tsv
+linkedin company microsoft -o json           # pretty JSON array
+linkedin jobs "golang" -o jsonl              # one JSON object per line
+linkedin profile williamhgates -o csv        # CSV with a header row
+linkedin jobs "golang" -o url                 # just the job URLs
+linkedin jobs "golang" -o markdown            # a GitHub-flavored pipe table
+linkedin job 4391940951 --fields title,company,location -o tsv
 linkedin profile williamhgates --template '{{.Name}} has {{.Followers}} followers'
 ```
 
@@ -183,26 +185,27 @@ linkedin db count                                       # how many records, by k
 linkedin db query --kind job -n 10                      # read them back
 ```
 
-The fetcher is polite by default (2 workers, a 2s spacing) and you can tune it
-with `--workers` and `--delay`.
+The fetcher is polite by default (a 2s spacing between requests) and you can tune
+it with `--rate`.
 
 ## Exit codes
 
 | Code | Meaning |
 | --- | --- |
-| 0 | success |
-| 1 | error |
-| 2 | usage error |
-| 3 | no data (not found, empty result) |
-| 4 | partial (some items in a batch failed) |
-| 5 | blocked (a sign-in wall or bot block; try `--cookies`) |
+| 0 | OK |
+| 1 | Error (generic failure) |
+| 2 | Usage error (bad flags or arguments) |
+| 3 | No results (nothing matched) |
+| 4 | Auth required (the page is behind the sign-in wall; pass `--cookies`) |
+| 5 | Rate limited (HTTP 429 after retries) |
+| 6 | Not found (a 404 or an unknown id) |
 
 ## Configuration
 
 State lives under `$XDG_DATA_HOME/linkedin` (or `~/.local/share/linkedin`),
 overridable with `--data-dir` or `LINKEDIN_DATA_DIR`. The page cache and the
-SQLite store both sit there. Politeness and networking knobs (`--delay`,
-`--workers`, `--timeout`, `--retries`, `--cache-ttl`, `--no-cache`, `--refresh`,
+SQLite store both sit there. Politeness and networking knobs (`--rate`,
+`--timeout`, `--retries`, `--cache-ttl`, `--no-cache`, `--refresh`,
 `--cookies`) are global flags on every command. Run `linkedin info` to see the
 resolved paths and `linkedin <command> --help` for the full surface.
 

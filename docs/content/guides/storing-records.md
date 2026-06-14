@@ -39,7 +39,7 @@ linkedin db query    # read stored records back out
 else, so you can shape and pipe them:
 
 ```bash
-linkedin db query --format jsonl | jq -r .name
+linkedin db query --output jsonl | jq -r .name
 linkedin db query --fields name,industry,employees
 ```
 
@@ -50,7 +50,7 @@ Building a slice of companies and their open roles looks like this:
 ```bash
 linkedin company microsoft --posts --save
 linkedin jobs "golang engineer" --location "United States" --hydrate --save -n 100
-linkedin db query --format jsonl > dataset.jsonl
+linkedin db query --output jsonl > dataset.jsonl
 ```
 
 ## The page cache
@@ -71,6 +71,6 @@ force a re-fetch with `--refresh`.
 ## Where state lives
 
 The store and cache both live under the data dir; point that elsewhere with
-`--data-dir` or `LINKEDIN_DATA_DIR`, and point the database file alone with
-`--store`. That last one is handy when you want one corpus per project. See
-[configuration](/reference/configuration/).
+`--data-dir` or `LINKEDIN_DATA_DIR`. The store file is fixed at
+`<data-dir>/linkedin.db`, so to keep one corpus per project, point `--data-dir`
+at a per-project directory. See [configuration](/reference/configuration/).

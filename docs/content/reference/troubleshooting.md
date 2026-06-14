@@ -8,13 +8,13 @@ Most of these come down to network reality, not a bug. LinkedIn is a public
 website with a sign-in wall, and linkedin is honest about what it can and cannot
 read.
 
-## "blocked" and exit code 5
+## "blocked" and exit code 4
 
 LinkedIn serves some surfaces to anonymous visitors and walls the rest behind a
-sign-in wall. When the page linkedin asks for is walled, it exits with code 5
-("blocked") rather than returning the wall as if it were data. The wall shows up
-two ways: HTTP 999 is LinkedIn's bot block, and an authwall is a redirect to
-`/authwall`, `/uas/login`, `/login`, `/checkpoint`, or `/signup`.
+sign-in wall. When the page linkedin asks for is walled, it exits with code 4
+("auth required") rather than returning the wall as if it were data. The wall
+shows up two ways: HTTP 999 is LinkedIn's bot block, and an authwall is a
+redirect to `/authwall`, `/uas/login`, `/login`, `/checkpoint`, or `/signup`.
 
 What is walled, plainly:
 
@@ -36,7 +36,7 @@ same-site referer is one signal LinkedIn reads as scraping and answers with 999.
 With no referer, profile and company pages return 200, so 999 now only shows up
 on the genuinely walled surfaces above (school pages most of all). If you hit a
 999 on a surface that normally works, it is most likely IP-level rate-limiting,
-not the page being walled. Slow down with `--delay`, or lend a session with
+not the page being walled. Slow down with `--rate`, or lend a session with
 `--cookies`.
 
 What to do, in order:
@@ -44,7 +44,7 @@ What to do, in order:
 1. **Use the surfaces that work anonymously.** `jobs` and `job` use the guest
    endpoints, `company` reads the Organization JSON-LD plus the about panel, and
    `profile` reads the Person JSON-LD. Prefer them for the fields they carry.
-2. **Slow down and retry.** The default `--delay` is already two seconds. Raise
+2. **Slow down and retry.** The default `--rate` is already two seconds. Raise
    it if you are seeing 999 on normally-working pages; the same page can succeed a
    moment later at a gentler rate.
 3. **Lend a session with `--cookies`.** Export a Netscape `cookies.txt` jar from
@@ -70,34 +70,40 @@ signed in to LinkedIn, save it somewhere private, and pass its path to
 `--cookies`. linkedin only replays the jar; it never logs in for you and never
 stores credentials.
 
-## "no data" and exit code 3
+## "no results" and exit code 3
 
-Exit code 3 means linkedin reached the page but found nothing to return: a 404,
-a job search with no matches, an empty result. Check the slug, id, or URL is
-right (use `linkedin id <input>` to see how linkedin classifies it), broaden a
-job search, or loosen the filters.
+Exit code 3 means linkedin reached the page but found nothing to return: a job
+search with no matches, an empty result. Check the slug, id, or URL is right
+(use `linkedin id <input>` to see how linkedin classifies it), broaden a job
+search, or loosen the filters. A genuine 404 or an unknown id exits with code 6
+("not found") instead.
 
 ## Rate limiting (429)
 
 If LinkedIn returns 429 (too many requests), linkedin backs off and retries up
-to `--retries` times. If you see this often, you are going too fast: raise
-`--delay`, lower `--workers`, and let the cache absorb repeat fetches. The
-defaults (two second delay, two workers) are set to avoid this.
+to `--retries` times. When the retries are exhausted the command exits 5 ("rate
+limited"). If you see this often, you are going too fast: raise `--rate` and let
+the cache absorb repeat fetches. The default (a two second spacing) is set to
+avoid this.
 
-## A multi-fetch reports failures (exit code 4)
+## Partial failures in a multi-fetch
 
 When you pass several inputs at once (`profile a b c`, `job 1 2 3`, or `jobs
---hydrate`), linkedin exits 4 if it returned some records but others failed
-(often a walled post in the batch, or one input that got rate-limited). The
-records that did parse are emitted; re-run the failed ones later, slow down with
-`--delay`, or pass `--cookies` for the walled ones.
-Exit 3 means nothing came back at all.
+--hydrate`) and some inputs fail (often a walled post in the batch, or one input
+that got rate-limited), linkedin prints the records that did parse and exits 0;
+each failure is logged as a warning on stderr. Re-run the failed ones later, slow
+down with `--rate`, or pass `--cookies` for the walled ones.
+
+If every input fails, the command exits with the failure's own code: 4 for a
+walled page, 5 for a rate-limited one, or 6 for a not-found one. If nothing
+matched at all, it exits 3.
 
 ## Where state lives
 
 The on-disk cache and the SQLite store both live under the data dir (the XDG
 data directory by default, or `LINKEDIN_DATA_DIR` / `--data-dir`). The store file
-alone can be moved with `--store`. To see the resolved paths:
+is fixed at `<data-dir>/linkedin.db`, so to move it, point `--data-dir` at
+another directory. To see the resolved paths:
 
 ```bash
 linkedin info

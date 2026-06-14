@@ -58,7 +58,7 @@ What is still walled:
 - **People and company search**, typeahead, and `/search/results/*` require
   sign-in.
 
-When a page is walled, linkedin exits with code 5 ("blocked") rather than
+When a page is walled, linkedin exits with code 4 ("auth required") rather than
 pretending it got data. HTTP 999 is LinkedIn's bot block; an authwall shows up as
 a redirect to `/authwall`, `/uas/login`, `/login`, `/checkpoint`, or `/signup`.
 The hint suggests passing `--cookies`: a Netscape `cookies.txt` jar exported from
@@ -67,9 +67,9 @@ gets through.
 
 ## Polite by default
 
-linkedin waits two seconds between requests and runs two workers by default, so
-a busy session stays a good citizen against a public site. You can tune
-`--delay` and `--workers`, but the defaults are deliberately gentle.
+linkedin waits two seconds between requests by default, so a busy session stays
+a good citizen against a public site. You can tune `--rate`, but the default is
+deliberately gentle.
 
 ## Independent and public-data only
 

@@ -20,9 +20,9 @@ linkedin job 3801234567                     # one job posting in full
 ```
 
 It talks to `www.linkedin.com` over plain HTTPS with no API key. The binary is
-pure Go with no runtime dependencies. Output is a table on a terminal and JSONL
-when piped, with json, csv, tsv, url, raw, `--fields`, and `--template` when you
-want something else.
+pure Go with no runtime dependencies. Output is a readable list on a terminal and
+JSONL when piped, with table, markdown, json, csv, tsv, url, raw, `--fields`, and
+`--template` when you want something else.
 
 ## What you can do with it
 
@@ -52,14 +52,14 @@ Graph backstop. What is still walled: school pages return LinkedIn's bot block
 (HTTP 999), the dedicated activity and `/posts/` subpages of profiles and
 companies redirect to a login (which is why posts come from the JSON-LD graph on
 the main page instead), and people and company search require sign-in. When a
-page is walled, linkedin exits with code 5 and you can lend a session with
+page is walled, linkedin exits with code 4 and you can lend a session with
 `--cookies` (a Netscape cookies.txt jar).
 
 ## Independent and public-data only
 
 linkedin is an independent, open-source tool. It is not affiliated with,
 endorsed by, or sponsored by LinkedIn or Microsoft. It reads only public pages,
-at a polite default rate (a two second gap between requests, two workers).
+at a polite default rate (a two second gap between requests).
 
 ## Where to go next
 
