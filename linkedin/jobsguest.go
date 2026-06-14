@@ -127,6 +127,7 @@ func parseJobCards(doc *goquery.Document) []JobStub {
 				s.CompanySlug = slugFromCompanyURL(href)
 			}
 		}
+		s.CompanyLogo = logoFromCard(li)
 		if t := li.Find("time").First(); t.Length() > 0 {
 			if dt, ok := t.Attr("datetime"); ok && dt != "" {
 				s.Posted = dt
@@ -137,6 +138,23 @@ func parseJobCards(doc *goquery.Document) []JobStub {
 		out = append(out, s)
 	})
 	return out
+}
+
+// logoFromCard returns the company logo URL from a job card or detail fragment.
+// LinkedIn lazy-loads the logo, so the real URL lives in data-delayed-url on the
+// artdeco-entity-image <img>; src is a placeholder until the script swaps it in.
+func logoFromCard(sel *goquery.Selection) string {
+	img := sel.Find("img.artdeco-entity-image").First()
+	if img.Length() == 0 {
+		return ""
+	}
+	if u, ok := img.Attr("data-delayed-url"); ok && u != "" {
+		return strings.TrimSpace(u)
+	}
+	if u, ok := img.Attr("src"); ok && !strings.HasPrefix(u, "data:") {
+		return strings.TrimSpace(u)
+	}
+	return ""
 }
 
 // FetchJob fetches one job posting through the guest detail fragment.
@@ -170,6 +188,7 @@ func parseJobDetail(doc *goquery.Document, id string) (*Job, error) {
 			j.CompanySlug = slugFromCompanyURL(href)
 		}
 	}
+	j.CompanyLogo = logoFromCard(doc.Selection)
 	// The bulleted flavor holds the location; the first flavor is the org name.
 	if loc := doc.Find(".topcard__flavor--bullet").First(); loc.Length() > 0 {
 		j.Location = cleanText(loc.Text())

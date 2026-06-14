@@ -38,6 +38,15 @@ func segment(s, marker string) string {
 // slugFromCompanyURL pulls the slug out of a /company/<slug> URL.
 func slugFromCompanyURL(u string) string { return segment(u, "/company/") }
 
+// slugFromAffiliationURL pulls the slug out of either a /company/<slug> or a
+// /school/<slug> URL, since a person's affiliations mix companies and schools.
+func slugFromAffiliationURL(u string) string {
+	if strings.Contains(u, "/school/") {
+		return segment(u, "/school/")
+	}
+	return slugFromCompanyURL(u)
+}
+
 // slugFromProfileURL pulls the slug out of an /in/<slug> URL.
 func slugFromProfileURL(u string) string { return segment(u, "/in/") }
 

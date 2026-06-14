@@ -10,6 +10,7 @@ import (
 
 var reTags = regexp.MustCompile(`<[^>]+>`)
 var reWS = regexp.MustCompile(`\s+`)
+var reFollowers = regexp.MustCompile(`([\d,]+)\s+followers`)
 
 // cleanHTML strips tags and unescapes the common HTML entities.
 func cleanHTML(s string) string {

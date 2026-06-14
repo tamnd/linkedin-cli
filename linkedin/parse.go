@@ -28,6 +28,7 @@ type personLD struct {
 	} `json:"address"`
 	WorksFor             []affiliationLD `json:"worksFor"`
 	AlumniOf             []affiliationLD `json:"alumniOf"`
+	MemberOf             []affiliationLD `json:"memberOf"`
 	InteractionStatistic json.RawMessage `json:"interactionStatistic"`
 }
 
@@ -74,7 +75,7 @@ func toAffiliations(in []affiliationLD) []Affiliation {
 		out = append(out, Affiliation{
 			Name:      strings.TrimSpace(a.Name),
 			URL:       a.URL,
-			Slug:      slugFromCompanyURL(a.URL),
+			Slug:      slugFromAffiliationURL(a.URL),
 			StartDate: a.Member.StartDate,
 			EndDate:   a.Member.EndDate,
 		})
@@ -108,6 +109,7 @@ func ParseProfile(doc *goquery.Document, slug, pageURL string) (*Profile, error)
 		Awards:      ldStrings(p.Awards),
 		WorksFor:    toAffiliations(p.WorksFor),
 		AlumniOf:    toAffiliations(p.AlumniOf),
+		MemberOf:    toAffiliations(p.MemberOf),
 		SameAs:      ldStrings(p.SameAs),
 		FetchedAt:   time.Now(),
 	}
@@ -173,7 +175,75 @@ func ParseCompany(doc *goquery.Document, slug, pageURL string) (*Company, error)
 	if c.Name == "" {
 		c.Name = metaContent(doc, "og:title")
 	}
+	parseCompanyAbout(doc, c)
 	return c, nil
+}
+
+// parseCompanyAbout fills the fields the Organization JSON-LD leaves out by
+// reading the company page's about panel: a list of <dt> label / <dd> value
+// pairs (Industry, Company size, Type, Headquarters, Founded, Specialties,
+// Website) plus the follower count carried in the Open Graph description.
+func parseCompanyAbout(doc *goquery.Document, c *Company) {
+	doc.Find("dt").Each(func(_ int, dt *goquery.Selection) {
+		label := strings.TrimSpace(dt.Text())
+		dd := dt.NextFiltered("dd")
+		if dd.Length() == 0 {
+			return
+		}
+		val := cleanText(dd.Text())
+		switch label {
+		case "Industry":
+			if c.Industry == "" {
+				c.Industry = val
+			}
+		case "Company size":
+			if c.CompanySize == "" {
+				c.CompanySize = val
+			}
+		case "Type":
+			if c.CompanyType == "" {
+				c.CompanyType = val
+			}
+		case "Headquarters":
+			if c.Headquarters == "" {
+				c.Headquarters = val
+			}
+		case "Founded":
+			if c.Founded == "" {
+				c.Founded = val
+			}
+		case "Specialties":
+			if c.Specialties == "" {
+				c.Specialties = val
+			}
+		case "Website":
+			if c.Website == "" {
+				c.Website = firstField(val)
+			}
+		}
+	})
+	if c.Followers == 0 {
+		c.Followers = int64(atoiClean(followersFromText(metaContent(doc, "og:description"))))
+	}
+}
+
+// followersFromText pulls the "<n> followers" count out of a blob of text, such
+// as a company's Open Graph description ("Acme | 12,345 followers on LinkedIn").
+func followersFromText(s string) string {
+	m := reFollowers.FindStringSubmatch(s)
+	if len(m) == 2 {
+		return m[1]
+	}
+	return ""
+}
+
+// firstField returns the first whitespace-delimited token, used to drop the
+// "External link for X" suffix LinkedIn appends to the about-panel website.
+func firstField(s string) string {
+	if i := strings.IndexAny(s, " \t\n"); i >= 0 {
+		return s[:i]
+	}
+	return s
 }
 
 // ── Posts (best effort) ─────────────────────────────────────────────────────
@@ -238,4 +308,57 @@ func ParsePost(doc *goquery.Document, pageURL string) (*Post, error) {
 		return nil, ErrNotFound
 	}
 	return post, nil
+}
+
+// postFromNode builds a Post from a DiscussionForumPosting/Article JSON-LD node.
+func postFromNode(raw json.RawMessage, now time.Time) (Post, bool) {
+	var p postLD
+	if json.Unmarshal(raw, &p) != nil {
+		return Post{}, false
+	}
+	a := parseAuthor(p.Author)
+	post := Post{
+		URL:       canonicalURL(p.URL),
+		Author:    strings.TrimSpace(a.Name),
+		AuthorURL: a.URL,
+		Title:     cleanText(p.Headline),
+		Text:      cleanText(p.Text),
+		Published: p.DatePublished,
+		ImageURL:  ldString(p.Image),
+		Likes:     interactionCount(p.InteractionStatistic, "LikeAction"),
+		Comments:  interactionCount(p.InteractionStatistic, "CommentAction"),
+		FetchedAt: now,
+	}
+	return post, true
+}
+
+// ── Articles ────────────────────────────────────────────────────────────────
+
+type articleLD struct {
+	Headline             string          `json:"headline"`
+	URL                  string          `json:"url"`
+	DatePublished        string          `json:"datePublished"`
+	Image                json.RawMessage `json:"image"`
+	Author               json.RawMessage `json:"author"`
+	InteractionStatistic json.RawMessage `json:"interactionStatistic"`
+}
+
+// articleFromNode builds an Article from an Article JSON-LD node.
+func articleFromNode(raw json.RawMessage, now time.Time) (Article, bool) {
+	var a articleLD
+	if json.Unmarshal(raw, &a) != nil {
+		return Article{}, false
+	}
+	au := parseAuthor(a.Author)
+	return Article{
+		URL:       canonicalURL(a.URL),
+		Title:     cleanText(a.Headline),
+		Author:    strings.TrimSpace(au.Name),
+		AuthorURL: au.URL,
+		Published: a.DatePublished,
+		Reactions: interactionCount(a.InteractionStatistic, "LikeAction"),
+		Comments:  interactionCount(a.InteractionStatistic, "CommentAction"),
+		ImageURL:  ldString(a.Image),
+		FetchedAt: now,
+	}, true
 }

@@ -7,6 +7,7 @@ const jobCardHTML = `<ul>
 <li>
 <div class="base-card relative job-search-card" data-entity-urn="urn:li:jobPosting:4391940951">
 <a class="base-card__full-link" href="https://ca.linkedin.com/jobs/view/backend-engineer-go-at-xsolla-4391940951?position=1"><span class="sr-only">Backend Engineer (Go)</span></a>
+<img class="artdeco-entity-image" data-delayed-url="https://media.licdn.com/company-logo.png" src="data:image/gif;base64,placeholder">
 <div class="base-search-card__info">
 <h3 class="base-search-card__title">Backend Engineer (Go)</h3>
 <h4 class="base-search-card__subtitle"><a class="hidden-nested-link" href="https://www.linkedin.com/company/xsolla?trk=public_jobs">Xsolla</a></h4>
@@ -42,11 +43,15 @@ func TestParseJobCards(t *testing.T) {
 	if s.Posted != "2025-12-01" {
 		t.Errorf("posted = %q", s.Posted)
 	}
+	if s.CompanyLogo != "https://media.licdn.com/company-logo.png" {
+		t.Errorf("company logo = %q", s.CompanyLogo)
+	}
 }
 
 // A trimmed copy of the guest job-detail fragment.
 const jobDetailHTML = `<section>
 <h2 class="topcard__title">Backend Engineer (Go)</h2>
+<img class="artdeco-entity-image" data-delayed-url="https://media.licdn.com/company-logo.png" src="data:image/gif;base64,placeholder">
 <a class="topcard__org-name-link" href="https://www.linkedin.com/company/xsolla?trk=x">Xsolla</a>
 <span class="topcard__flavor topcard__flavor--bullet">Montreal, Quebec, Canada</span>
 <span class="num-applicants__caption">91 applicants</span>
@@ -85,6 +90,9 @@ func TestParseJobDetail(t *testing.T) {
 	}
 	if j.Description != "We are hiring a Go engineer." {
 		t.Errorf("description = %q", j.Description)
+	}
+	if j.CompanyLogo != "https://media.licdn.com/company-logo.png" {
+		t.Errorf("company logo = %q", j.CompanyLogo)
 	}
 }
 
