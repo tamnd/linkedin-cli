@@ -6,7 +6,7 @@ weight: 30
 
 This walks the core loop: search the jobs board, fetch a job in full, look up a
 profile, and read a company page. The jobs commands hit the guest endpoint, so
-they are quick and reliable. Profiles work for many members; some are walled.
+they are quick and reliable, and profile and company pages return 200 and work.
 
 ## 1. Search the jobs board
 
@@ -50,10 +50,18 @@ linkedin job 3801234567 --format json
 linkedin profile williamhgates
 ```
 
-It reads the page's Person JSON-LD. Many profiles work, but some are walled. If
-you see exit code 5 ("blocked"), that profile was behind the sign-in wall this
-time. Try again, or lend a signed-in session with `--cookies` (see
-[troubleshooting](/reference/troubleshooting/)).
+It reads the page's Person JSON-LD. Add `--posts` to also emit the member's
+recent posts, or `--articles` for their long-form articles (if both are given,
+`--posts` wins):
+
+```bash
+linkedin profile williamhgates --posts
+```
+
+Profile and company pages return 200 and work. If you do see exit code 5
+("blocked") on a normally-working surface, it usually means IP-level
+rate-limiting; slow down with `--delay` or lend a signed-in session with
+`--cookies` (see [troubleshooting](/reference/troubleshooting/)).
 
 ## 4. Read a company page
 
@@ -92,7 +100,7 @@ linkedin jobs "golang engineer" --format jsonl | jq -r .url
 Keep just a couple of fields off a company:
 
 ```bash
-linkedin company microsoft --fields name,industry,employee_count
+linkedin company microsoft --fields name,industry,employees
 ```
 
 ## Where to next

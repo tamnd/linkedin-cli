@@ -14,11 +14,11 @@ from a kind and an id.
 linkedin post https://www.linkedin.com/posts/example-activity-123456789
 ```
 
-`post` reads public posts and articles from the page's DiscussionForumPosting
-JSON-LD when it can. Be honest with yourself about this one: most posts are
-walled behind the sign-in wall, so `post` is best effort. When a post is walled,
-linkedin exits with code 5 ("blocked"). Lending a session with `--cookies` gets
-more of them through:
+`post` reads a single public post or article, JSON-LD first (the page's
+`DiscussionForumPosting` or `Article` node) with an Open Graph backstop. It is
+best effort, but single public posts and articles generally return data. When one
+is walled, linkedin exits with code 5 ("blocked"). Lending a session with
+`--cookies` gets more of them through:
 
 ```bash
 linkedin post https://www.linkedin.com/posts/example-activity-123456789 --cookies ~/cookies.txt

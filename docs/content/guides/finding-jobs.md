@@ -4,10 +4,9 @@ description: "Search the jobs board through the anonymous guest endpoint, filter
 weight: 20
 ---
 
-The jobs board is the surface that reads most reliably for anonymous visitors,
-because search and detail both run through LinkedIn's guest endpoints. Search the
-board with `jobs`, narrow it with the filters, then read a posting in full with
-`job`.
+The jobs board reads reliably for anonymous visitors, because search and detail
+both run through LinkedIn's guest endpoints. Search the board with `jobs`, narrow
+it with the filters, then read a posting in full with `job`.
 
 ## Search the board
 
@@ -18,7 +17,7 @@ linkedin jobs "golang engineer" -n 25
 `jobs` searches through the anonymous guest endpoint
 (`/jobs-guest/jobs/api/seeMoreJobPostings/search`), paginating in pages of 25
 until `-n` results or the endpoint runs dry. Each row is a JobStub (the title,
-company, location, id, and URL).
+company, company logo, location, id, and URL).
 
 ## Filters
 
@@ -69,9 +68,9 @@ linkedin job 3801234567
 
 `job` takes a job id or a full URL and reads the guest job-detail fragment
 (`/jobs-guest/jobs/api/jobPosting/<id>`). A job record carries the title,
-company, location, applicant count, posting date, the full description, and the
-criteria (seniority, employment type, job function, industries). It takes several
-ids at once:
+company, company logo, location, applicant count, posting date, the full
+description, and the criteria (seniority, employment type, job function,
+industries). It takes several ids at once:
 
 ```bash
 linkedin job 3801234567 3809876543 --format csv

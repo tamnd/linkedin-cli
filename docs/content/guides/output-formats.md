@@ -37,7 +37,7 @@ Keep only the fields you want:
 
 ```bash
 linkedin job 3801234567 --fields title,company,location
-linkedin company microsoft --fields name,industry,employee_count
+linkedin company microsoft --fields name,industry,employees
 ```
 
 `--no-header` drops the header row in `table`, `csv`, and `tsv` output, which is

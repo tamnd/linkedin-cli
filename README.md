@@ -43,12 +43,21 @@ walled.
 
 | Surface | Command | Anonymous access |
 | --- | --- | --- |
-| Member profile | `profile` | Works for many profiles via the Person JSON-LD |
-| Company page | `company` | Works via the Organization JSON-LD |
+| Member profile | `profile` | Works via the Person JSON-LD |
+| Profile posts | `profile --posts` | Works via the page's JSON-LD graph |
+| Profile articles | `profile --articles` | Works via the page's JSON-LD graph |
+| Company page | `company` | Works via the Organization JSON-LD plus the about panel |
+| Company posts | `company --posts` | Works via the page's JSON-LD graph |
 | Job posting | `job` | Works via the guest job-detail fragment |
 | Job search | `jobs` | Works via the guest job-search endpoint |
-| Public post or article | `post` | Best effort; most are walled |
-| School page | (via `company`/`url`) | Usually returns LinkedIn's bot block (999) |
+| Single post or article | `post` | Works best effort via JSON-LD and Open Graph |
+| School page | (classified by `id`) | Returns LinkedIn's bot block (999); not fetched |
+
+One detail makes the HTML surfaces work: an anonymous request that sends a
+LinkedIn self-`Referer` is treated as a scraper and answered with HTTP 999, so
+linkedin sends no referer at all and the profile and company pages come back
+normally. The dedicated activity and `/posts/` subpages still redirect to the
+sign-in wall, so posts are read from the main page's JSON-LD instead.
 
 When a page is gated, linkedin exits with code 5 and you can lend a signed-in
 session with `--cookies` (a Netscape `cookies.txt` jar exported from your
@@ -86,6 +95,8 @@ make build      # produces ./bin/linkedin
 
 ```sh
 linkedin profile williamhgates              # a member profile as a record
+linkedin profile williamhgates --posts      # the member's recent public posts
+linkedin profile williamhgates --articles   # the member's long-form articles
 linkedin company microsoft                  # a company page as a record
 linkedin company microsoft --posts          # the company's recent public posts
 linkedin jobs "golang backend" --location Remote   # job stubs from the guest search
@@ -103,16 +114,19 @@ uses CSS selectors to fill in the rest. Responses are cached on disk
 network.
 
 - `profile` reads the **Person JSON-LD** a public profile ships: name, headline,
-  location, follower count, current roles, and schools.
-- `company` reads the **Organization JSON-LD**: name, description, website,
-  address, employee count, and logo. With `--posts` it also collects the
-  `DiscussionForumPosting` nodes the page carries.
+  location, follower count, current roles, schools, and board or group
+  memberships. With `--posts` it emits the member's recent posts and with
+  `--articles` their long-form articles, both carried in the same JSON-LD graph.
+- `company` reads the **Organization JSON-LD** and the company **about panel**:
+  name, description, website, follower count, headquarters address, employee
+  count, industry, size band, type, founding year, specialties, and logo. With
+  `--posts` it also collects the `DiscussionForumPosting` nodes the page carries.
 - `jobs` reads the anonymous **guest job-search endpoint**, paginating in pages
   of 25 until `-n` results are gathered or the endpoint runs dry. With
   `--hydrate` it follows each stub to the full job record.
-- `job` reads the guest **job-detail fragment**: title, company, location,
-  applicant count, posting date, the full description, and the criteria block
-  (seniority, employment type, function, industries).
+- `job` reads the guest **job-detail fragment**: title, company, company logo,
+  location, applicant count, posting date, the full description, and the criteria
+  block (seniority, employment type, function, industries).
 
 When a page is behind the sign-in wall or returns LinkedIn's bot block (HTTP
 999), linkedin exits cleanly with code 5.
@@ -121,7 +135,7 @@ When a page is behind the sign-in wall or returns LinkedIn's bot block (HTTP
 
 | Command | What it does |
 | --- | --- |
-| `profile <slug\|url>...` | Fetch one or more public member profiles (`--save`) |
+| `profile <slug\|url>...` | Fetch one or more public member profiles (`--posts`, `--articles`, `--save`) |
 | `company <slug\|url>...` | Fetch one or more company pages (`--posts`, `--save`) |
 | `job <id\|url>...` | Fetch one or more job postings |
 | `jobs <keywords...>` | Search jobs through the guest endpoint (`--location`, `--posted`, `--remote`, `--experience`, `--job-type`, `--sort`, `--hydrate`, `--save`) |

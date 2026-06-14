@@ -40,7 +40,7 @@ else, so you can shape and pipe them:
 
 ```bash
 linkedin db query --format jsonl | jq -r .name
-linkedin db query --fields name,industry,employee_count
+linkedin db query --fields name,industry,employees
 ```
 
 ## A small dataset, end to end

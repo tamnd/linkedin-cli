@@ -27,9 +27,10 @@ want something else.
 ## What you can do with it
 
 - **Fetch profiles and companies.** `linkedin profile` reads a public member
-  profile from the page's Person JSON-LD, and `linkedin company` reads a company
-  page from its Organization JSON-LD, with `--posts` to also collect recent
-  public company posts.
+  profile from the page's Person JSON-LD, with `--posts` and `--articles` to also
+  emit the member's recent posts and long-form articles. `linkedin company` reads
+  a company page from its Organization JSON-LD and the about panel, with `--posts`
+  to also collect recent public company posts.
 - **Read and search jobs.** `linkedin job` fetches a single posting in full, and
   `linkedin jobs` searches the board through the anonymous guest endpoint, with
   filters for location, posting age, remote mode, experience, and job type.
@@ -44,11 +45,15 @@ want something else.
 ## Honest about what is walled
 
 LinkedIn serves some surfaces to anonymous visitors and walls the rest behind a
-sign-in wall. Profiles work for many members but not all, company pages and job
-detail work, and jobs search works through the guest endpoint. Posts are best
-effort and mostly walled. School pages and people search are walled and return
-LinkedIn's bot block. When a page is walled, linkedin exits with code 5 and you
-can lend a session with `--cookies` (a Netscape cookies.txt jar).
+sign-in wall. Profiles, company pages, and job detail all return 200 and work
+reliably, and jobs search works through the guest endpoint. Single public posts
+and articles generally return data, best effort, through JSON-LD with an Open
+Graph backstop. What is still walled: school pages return LinkedIn's bot block
+(HTTP 999), the dedicated activity and `/posts/` subpages of profiles and
+companies redirect to a login (which is why posts come from the JSON-LD graph on
+the main page instead), and people and company search require sign-in. When a
+page is walled, linkedin exits with code 5 and you can lend a session with
+`--cookies` (a Netscape cookies.txt jar).
 
 ## Independent and public-data only
 

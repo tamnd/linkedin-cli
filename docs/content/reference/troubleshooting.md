@@ -18,26 +18,40 @@ two ways: HTTP 999 is LinkedIn's bot block, and an authwall is a redirect to
 
 What is walled, plainly:
 
-- **School pages** return the bot block (HTTP 999).
-- **People search** is walled.
-- **`post`** is best effort; most posts are walled.
-- **`profile`** works for many members, but some are walled.
+- **School pages** (`/school/<slug>`) return the bot block (HTTP 999). There is
+  no `school` fetch command; `id` only classifies a school URL.
+- **The activity and `/posts/` subpages** of profiles and companies redirect to
+  `/uas/login`. That is why posts come from the JSON-LD graph on the main page,
+  not those subpages.
+- **People and company search** require sign-in.
 
-What works anonymously: `company`, `job`, `jobs` search, and many `profile`
-lookups.
+What works anonymously: `profile`, `company`, `job`, and `jobs` search. Profile
+and company pages return 200 and read reliably. `post` is best effort but
+generally returns data for single public posts and articles.
+
+### About HTTP 999
+
+999 is LinkedIn's bot block. linkedin sends no `Referer` header, because a
+same-site referer is one signal LinkedIn reads as scraping and answers with 999.
+With no referer, profile and company pages return 200, so 999 now only shows up
+on the genuinely walled surfaces above (school pages most of all). If you hit a
+999 on a surface that normally works, it is most likely IP-level rate-limiting,
+not the page being walled. Slow down with `--delay`, or lend a session with
+`--cookies`.
 
 What to do, in order:
 
 1. **Use the surfaces that work anonymously.** `jobs` and `job` use the guest
-   endpoints, `company` reads the Organization JSON-LD, and most public profiles
-   read fine. Prefer them for the fields they carry.
-2. **Slow down and retry.** The default `--delay` is already two seconds. A
-   block is sometimes transient; the same page can succeed a moment later.
+   endpoints, `company` reads the Organization JSON-LD plus the about panel, and
+   `profile` reads the Person JSON-LD. Prefer them for the fields they carry.
+2. **Slow down and retry.** The default `--delay` is already two seconds. Raise
+   it if you are seeing 999 on normally-working pages; the same page can succeed a
+   moment later at a gentler rate.
 3. **Lend a session with `--cookies`.** Export a Netscape `cookies.txt` jar from
    a signed-in browser and pass it:
 
    ```bash
-   linkedin profile some-walled-member --cookies ~/cookies.txt
+   linkedin profile williamhgates --cookies ~/cookies.txt
    ```
 
    A real session usually clears the wall.
@@ -74,8 +88,9 @@ defaults (two second delay, two workers) are set to avoid this.
 
 When you pass several inputs at once (`profile a b c`, `job 1 2 3`, or `jobs
 --hydrate`), linkedin exits 4 if it returned some records but others failed
-(often a walled profile or post in the batch). The records that did parse are
-emitted; re-run the failed ones later, or pass `--cookies` for the walled ones.
+(often a walled post in the batch, or one input that got rate-limited). The
+records that did parse are emitted; re-run the failed ones later, slow down with
+`--delay`, or pass `--cookies` for the walled ones.
 Exit 3 means nothing came back at all.
 
 ## Where state lives

@@ -18,10 +18,12 @@ a job, and it hands you fields, not HTML.
 Most LinkedIn pages carry a [JSON-LD](https://json-ld.org) block: a chunk of
 structured data the page ships for search engines. linkedin reads that first,
 because it is the cleanest source on the page. Profiles carry a schema.org
-`Person`, company pages carry an `Organization`, and posts carry a
-`DiscussionForumPosting`. When a page does not carry the field it needs, linkedin
-falls back to reading the HTML with CSS selectors. The result either way is a
-record with real fields.
+`Person`, company pages carry an `Organization`, and a profile's recent posts and
+articles ride along in the same `@graph` as `DiscussionForumPosting` and `Article`
+nodes. When a page does not carry the field it needs, linkedin falls back to
+reading the HTML with CSS selectors, for example the company about panel that the
+Organization JSON-LD leaves out. The result either way is a record with real
+fields.
 
 Jobs are different. The jobs board and job detail come from LinkedIn's guest
 endpoints (`/jobs-guest/jobs/api/seeMoreJobPostings/search` and
@@ -31,22 +33,30 @@ the reliable path for job data.
 ## The sign-in wall, and what works around it
 
 Here is the honest part. LinkedIn serves some surfaces to anonymous visitors and
-walls the rest behind a sign-in wall. What works anonymously:
+walls the rest behind a sign-in wall. The key detail: linkedin sends no `Referer`
+header. A same-site referer is one of the signals LinkedIn reads as scraping and
+answers with HTTP 999, so leaving it off is what makes profile and company pages
+return 200. What works anonymously:
 
-- **`profile`** reads many public member profiles from the Person JSON-LD, though
-  not all of them. Some members are walled.
-- **`company`** reads company pages from the Organization JSON-LD.
+- **`profile`** reads public member profiles from the Person JSON-LD, and with
+  `--posts` or `--articles` emits the recent posts and articles from the same
+  graph.
+- **`company`** reads company pages from the Organization JSON-LD plus the about
+  panel in the HTML.
 - **`job`** reads a single posting from the guest job-detail fragment.
 - **`jobs`** searches the board through the anonymous guest endpoint.
+- **`post`** reads single public posts and articles best effort, JSON-LD first
+  with an Open Graph backstop, and generally returns data.
 
-Best effort and mostly walled:
+What is still walled:
 
-- **`post`** reads public posts and articles when it can, but most are walled.
-
-Usually walled:
-
-- **School pages** return LinkedIn's bot block (HTTP 999).
-- **People search** is walled.
+- **School pages** (`/school/<slug>`) return LinkedIn's bot block (HTTP 999).
+  There is no `school` fetch command; `id` only classifies a school URL.
+- **The activity and `/posts/` subpages** of profiles and companies (a profile's
+  `/recent-activity/`, a company's `/posts/`) redirect to `/uas/login`. That is
+  why posts come from the JSON-LD graph on the main page, not from those subpages.
+- **People and company search**, typeahead, and `/search/results/*` require
+  sign-in.
 
 When a page is walled, linkedin exits with code 5 ("blocked") rather than
 pretending it got data. HTTP 999 is LinkedIn's bot block; an authwall shows up as

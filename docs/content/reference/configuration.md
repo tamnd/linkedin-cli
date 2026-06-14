@@ -37,12 +37,12 @@ linkedin company microsoft --save --store ~/projects/hiring/linkedin.db
 
 The `--cookies` flag takes a Netscape `cookies.txt` jar exported from a
 signed-in browser session. linkedin sends those cookies with each request, which
-lends it a real session and often gets past the sign-in wall on a walled
-profile or post. linkedin never logs in for you and never stores credentials; it
-only replays the jar you hand it.
+lends it a real session and often gets past the sign-in wall on a walled post or
+when an anonymous request is rate-limited. linkedin never logs in for you and
+never stores credentials; it only replays the jar you hand it.
 
 ```bash
-linkedin profile some-walled-member --cookies ~/cookies.txt
+linkedin profile williamhgates --cookies ~/cookies.txt
 ```
 
 See [troubleshooting](/reference/troubleshooting/) for the cookie file format.

@@ -9,9 +9,10 @@ linkedin <command> [args] [flags]
 ```
 
 Run `linkedin <command> --help` for the full flag list on any command. This page
-is the map. `profile`, `company`, `job`, and `jobs` work for anonymous visitors;
-`post` is best effort and mostly walled. When a page is behind the sign-in wall,
-linkedin exits with code 5. See [troubleshooting](/reference/troubleshooting/).
+is the map. `profile`, `company`, `job`, and `jobs` work for anonymous visitors,
+and `post` is best effort but generally returns data for single public posts and
+articles. When a page is behind the sign-in wall, linkedin exits with code 5. See
+[troubleshooting](/reference/troubleshooting/).
 
 ## Commands
 
@@ -21,7 +22,7 @@ linkedin exits with code 5. See [troubleshooting](/reference/troubleshooting/).
 | `company` | Fetch company pages from the Organization JSON-LD |
 | `job` | Fetch a job posting from the guest job-detail fragment |
 | `jobs` | Search the jobs board through the anonymous guest endpoint |
-| `post` | Fetch public posts or articles (best effort, mostly walled) |
+| `post` | Fetch a single public post or article (best effort) |
 | `id` | Classify and normalize an input into (kind, id) without fetching |
 | `url` | Build a canonical LinkedIn URL from a kind and an id |
 | `db` | Inspect the local SQLite record store |
@@ -37,10 +38,25 @@ linkedin profile <slug|url> [slug|url ...] [flags]
 
 Fetches one or more public member profiles, parsed from the page's Person
 JSON-LD. Accepts a slug (`williamhgates`), an `/in/<slug>` path, or a full URL.
-`--save` upserts each profile into the store. Many profiles are walled (exit 5).
+Profile pages return 200 and work; an exit 5 here usually means IP-level
+rate-limiting (slow down with `--delay` or lend `--cookies`).
+
+Fields include the name, headline, location, country, followers, current and past
+positions (`works_for`, `alumni_of`), `member_of` (boards and groups, an array of
+affiliations with name, url, slug, start_date, end_date), and the canonical URL.
+There is no connection count; LinkedIn does not expose one anonymously.
+
+| Flag | Meaning |
+|---|---|
+| `--posts` | Also emit the member's recent posts (the `DiscussionForumPosting` nodes in the page's JSON-LD `@graph`) as Post records |
+| `--articles` | Also emit the member's long-form articles (the `Article` nodes in the same graph) as Article records |
+| `--save` | Upsert each profile into the store |
+
+If both `--posts` and `--articles` are given, `--posts` wins.
 
 ```bash
 linkedin profile williamhgates --format json
+linkedin profile williamhgates --posts
 ```
 
 ## company
@@ -49,12 +65,20 @@ linkedin profile williamhgates --format json
 linkedin company <slug|url> [slug|url ...] [flags]
 ```
 
-Fetches one or more company pages from the Organization JSON-LD. `--posts` also
-collects the company's recent public posts (the DiscussionForumPosting nodes).
-`--save` upserts each company into the store.
+Fetches one or more company pages from the Organization JSON-LD plus the company
+about panel. Fields from the JSON-LD: name, description, website, `employees` (a
+point estimate from numberOfEmployees), and the canonical URL. Fields from the
+about panel and og:description: `followers`, `industry`, `company_size` (the UI
+band like "10,001+ employees", separate from `employees`), `company_type` (for
+example "Public Company"), `founded` (the year, when the company lists it; some
+like Microsoft omit it), `specialties` (a comma list), and `headquarters` (for
+example "Sherman Oaks, CA"). `--posts` also collects the company's recent public
+posts (the `DiscussionForumPosting` nodes in the main page's JSON-LD graph; the
+`/posts/` subpage is login-walled). `--save` upserts each company into the store.
 
 ```bash
 linkedin company microsoft --posts
+linkedin company xsolla --fields name,founded,headquarters,followers
 ```
 
 ## job
@@ -64,8 +88,9 @@ linkedin job <id|url> [id|url ...]
 ```
 
 Fetches one or more job postings from the guest job-detail fragment. Fields
-include the title, company, location, applicant count, posting date, full
-description, and criteria (seniority, employment type, job function, industries).
+include the title, company, `company_logo`, location, applicant count, posting
+date, full description, and criteria (seniority, employment type, job function,
+industries).
 
 ```bash
 linkedin job 3801234567 --format json
@@ -79,7 +104,8 @@ linkedin jobs <keywords...> [flags]
 
 Searches the jobs board through the anonymous guest endpoint, paginating in pages
 of 25 until `-n` results or the endpoint runs dry. Emits JobStub records by
-default, or full Job records with `--hydrate`.
+default (title, company, `company_logo`, location, id, URL), or full Job records
+with `--hydrate`.
 
 | Flag | Meaning |
 |---|---|
@@ -103,8 +129,10 @@ linkedin jobs "golang engineer" --remote 2 --posted r604800 -n 50
 linkedin post <url> [url ...]
 ```
 
-Fetches public posts or articles, best effort. Most posts are walled; when one
-is, linkedin exits 5.
+Fetches a single public post or article, best effort: JSON-LD first (the
+`DiscussionForumPosting` or `Article` node) with an Open Graph backstop. Single
+public posts and articles generally return data; when one is walled, linkedin
+exits 5.
 
 ```bash
 linkedin post https://www.linkedin.com/posts/example-activity-123456789
