@@ -1,0 +1,10 @@
+title       = "linkedin"
+baseURL     = "https://linkedin-cli.tamnd.com/"
+description = "A fast, friendly command line for public LinkedIn data. One binary that turns profiles, companies, job postings, and job search into rich structured records as table, JSON, JSONL, CSV, TSV, or URLs."
+contentDir  = "content"
+outputDir   = "public"
+theme       = "tago-doks"
+syntaxHighlight = "true"
+
+[params]
+github = "https://github.com/tamnd/linkedin-cli"
