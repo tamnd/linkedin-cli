@@ -1,37 +1,43 @@
 package cli
 
 import (
-	"github.com/spf13/cobra"
-	"github.com/tamnd/linkedin-cli/linkedin"
+	"context"
+
+	"github.com/tamnd/any-cli/kit"
 )
 
-func (a *App) postCmd() *cobra.Command {
-	cmd := &cobra.Command{
+func postCmd() kit.Command {
+	return kit.Command{
 		Use:   "post <url> [more...]",
 		Short: "Fetch one or more public posts or articles (best effort)",
-		Long: "Fetch public posts and articles, parsed from Open Graph tags and any\n" +
-			"Article JSON-LD that serves anonymously. Posts are frequently gated, so\n" +
-			"this command often exits with the blocked code.",
-		Args: cobra.MinimumNArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := cmd.Context()
-			var out []linkedin.Post
+		Long: "Fetch public posts and articles, parsed from Open Graph tags and any Article " +
+			"JSON-LD that serves anonymously. Posts are frequently gated, so this command " +
+			"often exits with the need-auth code.",
+		Args: kit.MinimumNArgs(1),
+		Run: func(ctx context.Context, args []string) error {
+			a := appFromCtx(ctx)
+			client, err := a.clientOf()
+			if err != nil {
+				return err
+			}
+			sp := a.progress("fetching posts")
+			defer sp.stop()
+
+			var rows []Row
 			var firstErr error
-			fails := 0
 			for _, in := range args {
-				p, err := a.client.FetchPost(ctx, a.cache, a.cfg, in)
+				p, err := client.FetchPost(a.ctx(), a.cache, a.cfg, in)
 				if err != nil {
-					a.progressf("post %s: %v", in, err)
+					a.logf("post %s: %v", in, err)
 					if firstErr == nil {
 						firstErr = err
 					}
-					fails++
 					continue
 				}
-				out = append(out, *p)
+				rows = append(rows, postRow(p))
 			}
-			return a.finishMulti(out, len(args), fails, firstErr)
+			sp.stop()
+			return a.finish(rows, firstErr)
 		},
 	}
-	return cmd
 }
