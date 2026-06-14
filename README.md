@@ -1,223 +1,190 @@
 # linkedin
 
-A command line for public [LinkedIn](https://www.linkedin.com) data. One binary
-that turns member profiles, company pages, job postings, and the guest job
-search into rich, structured records as a list, table, Markdown, JSON, JSONL,
-CSV, TSV, or plain URLs.
+[![CI](https://github.com/tamnd/linkedin-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/tamnd/linkedin-cli/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/tamnd/linkedin-cli)](https://github.com/tamnd/linkedin-cli/releases/latest)
+[![Go Reference](https://pkg.go.dev/badge/github.com/tamnd/linkedin-cli.svg)](https://pkg.go.dev/github.com/tamnd/linkedin-cli)
+[![Go Report Card](https://goreportcard.com/badge/github.com/tamnd/linkedin-cli)](https://goreportcard.com/report/github.com/tamnd/linkedin-cli)
+[![License](https://img.shields.io/github/license/tamnd/linkedin-cli)](./LICENSE)
 
-```
-linkedin jobs "golang backend" --location Remote -n 5
-```
+A command line for public LinkedIn data. `linkedin` reads member profiles,
+company pages, job postings, and the guest job search and returns rich,
+structured records. One pure-Go binary, no API key, no login.
 
-```
-JOB_ID      TITLE                       COMPANY    LOCATION                   POSTED
-4391940951  Backend Engineer (Go)       Xsolla     Montreal, Quebec, Canada   2025-12-01
-4388210773  Senior Go Engineer          Datadog    Remote                     2025-11-29
-...
-```
+[Install](#install) • [Commands](#commands) • [Usage](#usage) • [What works anonymously](#what-works-anonymously)
 
-Full documentation: [linkedin-cli.tamnd.com](https://linkedin-cli.tamnd.com).
+![linkedin searching jobs and reading a member profile from the command line](docs/static/demo.gif)
 
-> linkedin is an independent, open-source tool. It is not affiliated with,
-> endorsed by, or sponsored by LinkedIn or Microsoft. It reads only public
-> pages, with no account and no API key, at a polite default rate.
+It reads the same pages a logged-out browser sees: the JSON-LD LinkedIn marks up
+for machines, then precise HTML selectors for anything the structured data misses.
+Responses are cached on disk so a repeat call is instant. When a page is behind
+the sign-in wall, `linkedin` exits with a distinct code and you can lend a
+signed-in session with `--cookies`.
 
-## Why
-
-LinkedIn's public data sits behind server-rendered pages and a handful of guest
-endpoints, with no open API to read it. Pulling anything structured out means
-hand-rolling a scraper, guessing at selectors, and redoing the work whenever a
-page changes. linkedin puts the public surface behind one tool with sensible
-defaults, real output formats, and pipelines that compose. It reads each page
-JSON-LD first and falls back to HTML selectors, so a profile or a company comes
-back as a complete record, not a bag of strings.
-
-It speaks to `www.linkedin.com` over plain HTTPS. The binary is pure Go with no
-runtime dependencies.
-
-## What works anonymously, and what is walled
-
-LinkedIn serves some surfaces to anonymous visitors and gates the rest behind a
-sign-in wall. linkedin reads what is public and reports clearly when a page is
-walled.
-
-| Surface | Command | Anonymous access |
-| --- | --- | --- |
-| Member profile | `profile` | Works via the Person JSON-LD |
-| Profile posts | `profile --posts` | Works via the page's JSON-LD graph |
-| Profile articles | `profile --articles` | Works via the page's JSON-LD graph |
-| Company page | `company` | Works via the Organization JSON-LD plus the about panel |
-| Company posts | `company --posts` | Works via the page's JSON-LD graph |
-| Company offices | `company --locations` | Works via the page's location cards |
-| Company related pages | `company --affiliated` | Works via the page's affiliated and showcase links |
-| Job posting | `job` | Works via the guest job-detail fragment |
-| Job search | `jobs` | Works via the guest job-search endpoint |
-| Single post or article | `post` | Works best effort via JSON-LD and Open Graph |
-| School page | (classified by `id`) | Returns LinkedIn's bot block (999); not fetched |
-
-One detail makes the HTML surfaces work: an anonymous request that sends a
-LinkedIn self-`Referer` is treated as a scraper and answered with HTTP 999, so
-linkedin sends no referer at all and the profile and company pages come back
-normally. The dedicated activity and `/posts/` subpages still redirect to the
-sign-in wall, so posts are read from the main page's JSON-LD instead.
-
-When a page is gated, linkedin exits with code 4 and you can lend a signed-in
-session with `--cookies` (a Netscape `cookies.txt` jar exported from your
-browser).
+`linkedin` is an independent tool. It is not affiliated with, endorsed by, or
+sponsored by LinkedIn or Microsoft.
 
 ## Install
 
-```sh
+```bash
 go install github.com/tamnd/linkedin-cli/cmd/linkedin@latest
 ```
 
-Or grab a prebuilt binary from the [releases page](https://github.com/tamnd/linkedin-cli/releases),
-install a Linux package (`deb`, `rpm`, `apk`), or pull the container image:
+Or grab a prebuilt binary, a Linux package (`deb`/`rpm`/`apk`), or a container
+image from the [releases](https://github.com/tamnd/linkedin-cli/releases):
 
-```sh
-docker run --rm ghcr.io/tamnd/linkedin jobs "golang" -n 5
+```bash
+brew install tamnd/tap/linkedin
+docker run --rm ghcr.io/tamnd/linkedin:latest jobs "golang" -n 5
 ```
 
-Homebrew and Scoop:
-
-```sh
-brew install --cask tamnd/tap/linkedin
-scoop install linkedin
-```
-
-Build from source:
-
-```sh
-git clone https://github.com/tamnd/linkedin-cli
-cd linkedin-cli
-make build      # produces ./bin/linkedin
-```
-
-## Quick start
-
-```sh
-linkedin profile williamhgates              # a member profile as a record
-linkedin profile williamhgates --posts      # the member's recent public posts
-linkedin profile williamhgates --articles   # the member's long-form articles
-linkedin company microsoft                  # a company page as a record
-linkedin company microsoft --posts          # the company's recent public posts
-linkedin company microsoft --locations      # the company's offices
-linkedin company microsoft --affiliated     # the company's related pages
-linkedin jobs "golang backend" --location Remote   # job stubs from the guest search
-linkedin job 4391940951                     # a full job posting
-linkedin jobs "data engineer" --hydrate -n 20 --save  # full jobs, into the store
-```
-
-## How it works
-
-linkedin reads the same pages a logged-out browser sees and normalizes each one
-into a struct, with explicit empty, zero, or `[]` for fields that are genuinely
-absent. Most public pages carry a JSON-LD block; linkedin reads that first and
-uses CSS selectors to fill in the rest. Responses are cached on disk
-(content-addressed and gzipped) so a repeat call is instant and does not hit the
-network.
-
-- `profile` reads the **Person JSON-LD** a public profile ships: name, headline,
-  location, follower count, current roles, schools, and board or group
-  memberships. With `--posts` it emits the member's recent posts and with
-  `--articles` their long-form articles, both carried in the same JSON-LD graph.
-- `company` reads the **Organization JSON-LD** and the company **about panel**:
-  name, description, website, follower count, headquarters address, employee
-  count, industry, size band, type, founding year, specialties, logo, and the
-  funding round count with a Crunchbase link to the latest round. With `--posts`
-  it collects the `DiscussionForumPosting` nodes the page carries, with
-  `--locations` the full office list, and with `--affiliated` the related
-  affiliated and showcase pages.
-- `jobs` reads the anonymous **guest job-search endpoint**, paginating in pages
-  of 25 until `-n` results are gathered or the endpoint runs dry. With
-  `--hydrate` it follows each stub to the full job record.
-- `job` reads the guest **job-detail fragment**: title, company, company logo,
-  location, applicant count, posting date, the full description, and the criteria
-  block (seniority, employment type, function, industries).
-
-When a page is behind the sign-in wall or returns LinkedIn's bot block (HTTP
-999), linkedin exits cleanly with code 4.
+Shell completion is built in: `linkedin completion bash|zsh|fish|powershell`.
 
 ## Commands
 
-| Command | What it does |
+| Command | Reads |
 | --- | --- |
-| `profile <slug\|url>...` | Fetch one or more public member profiles (`--posts`, `--articles`, `--save`) |
-| `company <slug\|url>...` | Fetch one or more company pages (`--posts`, `--locations`, `--affiliated`, `--save`) |
-| `job <id\|url>...` | Fetch one or more job postings |
-| `jobs <keywords...>` | Search jobs through the guest endpoint (`--location`, `--posted`, `--remote`, `--experience`, `--job-type`, `--sort`, `--hydrate`, `--save`) |
-| `post <url>...` | Fetch one or more public posts or articles (best effort) |
-| `id <input>...` | Classify and normalize a URL or id into (kind, id) without fetching |
-| `url <kind> <id>` | Build a canonical LinkedIn URL |
-| `db` | Inspect the local store (`path`, `count`, `query`) |
-| `cache` | Inspect and clear the page cache (`path`, `info`, `clear`) |
-| `info` | Show the resolved configuration and paths |
-| `version` | Print version, commit, and build date |
+| `linkedin profile <slug\|url>...` | a public member profile; `--posts`, `--articles` |
+| `linkedin company <slug\|url>...` | a company page; `--posts`, `--locations`, `--affiliated` |
+| `linkedin job <id\|url>...` | a full job posting |
+| `linkedin jobs <keywords...>` | guest job search; `--location`, `--remote`, `--posted`, `--experience`, `--job-type`, `--sort`, `--hydrate` |
+| `linkedin post <url>...` | a public post or article (best effort via JSON-LD) |
+| `linkedin id <input>...` | classify and normalize a URL or id without fetching |
+| `linkedin url <kind> <id>` | build a canonical LinkedIn URL |
+| `linkedin db path\|count\|query` | inspect the local record store |
+| `linkedin serve` | serve all operations over HTTP (NDJSON) |
+| `linkedin mcp` | run as an MCP server over stdio |
+| `linkedin info` | show the resolved configuration and data paths |
+| `linkedin cache path\|info\|clear` | inspect or clear the on-disk page cache |
+| `linkedin version` | print version, commit, and build date |
 
-## Output
+Full reference and guides live at [linkedin-cli.tamnd.com](https://linkedin-cli.tamnd.com).
 
-Output is a readable list view on a terminal and JSONL when piped, so it drops
-straight into a pipeline. Use `-o table` for the bordered grid and `-o markdown`
-for a paste-ready table. Pick any format explicitly with `-o`:
+## Usage
 
-```sh
-linkedin company microsoft -o json           # pretty JSON array
-linkedin jobs "golang" -o jsonl              # one JSON object per line
-linkedin profile williamhgates -o csv        # CSV with a header row
-linkedin jobs "golang" -o url                 # just the job URLs
-linkedin jobs "golang" -o markdown            # a GitHub-flavored pipe table
-linkedin job 4391940951 --fields title,company,location -o tsv
-linkedin profile williamhgates --template '{{.Name}} has {{.Followers}} followers'
+```bash
+linkedin profile williamhgates                    # a member profile
+linkedin profile williamhgates --posts            # the member's recent public posts
+linkedin company microsoft                        # a company page
+linkedin company microsoft --locations            # the company's offices
+linkedin jobs "golang backend" --location Remote  # job stubs from the guest search
+linkedin job 4391940951                           # a full job posting
 ```
 
-Choose columns with `--fields`, drop the header with `--no-header`, and apply a
-Go `text/template` per record with `--template`.
+Records come out as a table (the default on a terminal), list, markdown, JSON,
+JSONL, CSV, TSV, url, or raw. The output is colored on a terminal:
+
+```bash
+linkedin jobs "golang" --fields job_id,title,company,location,posted -o table
+linkedin profile williamhgates -o json
+linkedin jobs "data engineer" -n 50 -o jsonl | jq 'select(.location | contains("Remote"))'
+linkedin jobs "golang" -o url
+linkedin company microsoft -o markdown
+```
+
+Fetch full job records by hydrating each stub from the guest search:
+
+```bash
+linkedin jobs "golang backend" --hydrate -n 20 -o jsonl > jobs.jsonl
+```
+
+### Global flags
+
+```
+-o, --output      auto|list|table|markdown|json|jsonl|csv|tsv|url|raw   (auto: table on a TTY, jsonl when piped)
+    --fields      comma-separated columns to include
+    --no-header   omit the header row
+    --template    Go text/template applied per record
+-n, --limit       max records (0 = no limit)
+    --cookies     Netscape cookie jar to lend a signed-in session
+-q, --quiet       suppress progress output
+    --color       auto|always|never
+    --rate        min spacing between requests
+    --timeout     per-request timeout
+    --retries     retry attempts on rate limit or 5xx
+    --no-cache    bypass the on-disk cache
+    --refresh     force re-fetch and overwrite the cache
+    --cache-ttl   cache freshness window (default 24h)
+    --data-dir    override the data directory
+    --db          tee every record into a store (sqlite path or postgres:// URL)
+    --dry-run     print actions, do not perform them
+```
+
+## What works anonymously
+
+LinkedIn serves some surfaces to anonymous visitors and gates the rest behind a
+sign-in wall. `linkedin` reads what is public and exits with code 4 when a page
+is walled. Pass `--cookies` (a Netscape `cookies.txt` jar from your browser) to
+lend a signed-in session.
+
+| Surface | Command | Anonymous |
+| --- | --- | --- |
+| Member profile | `profile` | Yes — Person JSON-LD |
+| Profile posts | `profile --posts` | Yes — JSON-LD graph |
+| Profile articles | `profile --articles` | Yes — JSON-LD graph |
+| Company page | `company` | Yes — Organization JSON-LD + about panel |
+| Company posts | `company --posts` | Yes — JSON-LD graph |
+| Company offices | `company --locations` | Yes — location cards |
+| Company related pages | `company --affiliated` | Yes — affiliated links |
+| Job posting | `job` | Yes — guest job-detail fragment |
+| Job search | `jobs` | Yes — guest job-search endpoint |
+| Post or article | `post` | Best effort via JSON-LD and Open Graph |
 
 ## Storing records
 
-Records can be upserted into a local SQLite store, keyed by kind and id, so you
-can build a dataset over many calls and query it back:
+Records can be upserted into a local SQLite store with `--save`, keyed by kind
+and id, so you can build a dataset across many calls and query it back:
 
-```sh
+```bash
 linkedin jobs "data engineer" --hydrate -n 50 --save   # fetch and store
-linkedin company microsoft --save                       # store one company
-linkedin db count                                       # how many records, by kind
+linkedin company microsoft --save                       # store a company
+linkedin db count                                       # records by kind
 linkedin db query --kind job -n 10                      # read them back
 ```
 
-The fetcher is polite by default (a 2s spacing between requests) and you can tune
-it with `--rate`.
+Pass `--db path/to/file.db` to tee records into any SQLite file while they
+stream, without `--save`.
 
 ## Exit codes
 
-| Code | Meaning |
-| --- | --- |
-| 0 | OK |
-| 1 | Error (generic failure) |
-| 2 | Usage error (bad flags or arguments) |
-| 3 | No results (nothing matched) |
-| 4 | Auth required (the page is behind the sign-in wall; pass `--cookies`) |
-| 5 | Rate limited (HTTP 429 after retries) |
-| 6 | Not found (a 404 or an unknown id) |
-
-## Configuration
-
-State lives under `$XDG_DATA_HOME/linkedin` (or `~/.local/share/linkedin`),
-overridable with `--data-dir` or `LINKEDIN_DATA_DIR`. The page cache and the
-SQLite store both sit there. Politeness and networking knobs (`--rate`,
-`--timeout`, `--retries`, `--cache-ttl`, `--no-cache`, `--refresh`,
-`--cookies`) are global flags on every command. Run `linkedin info` to see the
-resolved paths and `linkedin <command> --help` for the full surface.
+```
+0  success
+1  error
+2  usage error
+3  no results
+4  auth required (page is behind the sign-in wall; pass --cookies)
+5  rate limited (HTTP 429 after retries)
+6  not found
+```
 
 ## Development
 
-```sh
-make build      # build ./bin/linkedin
-make test       # go test ./...
-make vet        # go vet ./...
-make fmt        # gofmt -s -w .
 ```
+cmd/linkedin/   thin main entry point
+cli/            cobra commands and output rendering
+linkedin/       HTTP client, parsers, and models
+docs/           documentation site (Hugo, tago-doks theme)
+```
+
+```bash
+make build   # ./bin/linkedin
+make test    # go test ./...
+make vet     # go vet ./...
+make fmt     # gofmt -s -w .
+```
+
+Requires Go 1.23+.
+
+## Releasing
+
+Push a version tag and GitHub Actions runs GoReleaser:
+
+```bash
+git tag -a v0.2.0 -m "v0.2.0"
+git push --tags
+```
+
+The image tag carries no `v` prefix (`ghcr.io/tamnd/linkedin:0.2.0`).
 
 ## License
 
-[Apache-2.0](LICENSE).
+Apache-2.0. See [LICENSE](LICENSE).
