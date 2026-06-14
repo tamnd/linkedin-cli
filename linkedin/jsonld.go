@@ -2,7 +2,6 @@ package linkedin
 
 import (
 	"encoding/json"
-	"strconv"
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
@@ -115,22 +114,4 @@ func ldStrings(raw json.RawMessage) []string {
 		return []string{one}
 	}
 	return nil
-}
-
-// ldInt parses a JSON value that may be a number or a quoted string into a year
-// or count integer.
-func ldInt(raw json.RawMessage) int {
-	if len(raw) == 0 {
-		return 0
-	}
-	var n int
-	if json.Unmarshal(raw, &n) == nil {
-		return n
-	}
-	var s string
-	if json.Unmarshal(raw, &s) == nil {
-		v, _ := strconv.Atoi(strings.TrimSpace(s))
-		return v
-	}
-	return 0
 }

@@ -23,7 +23,7 @@ func (a *App) dbCmd() *cobra.Command {
 				if path == "" {
 					path = a.cfg.StorePath()
 				}
-				fmt.Fprintln(os.Stdout, path)
+				_, _ = fmt.Fprintln(os.Stdout, path)
 				return nil
 			},
 		},
@@ -40,7 +40,7 @@ func (a *App) dbCmd() *cobra.Command {
 					return err
 				}
 				for k, n := range counts {
-					fmt.Fprintf(os.Stdout, "%s\t%d\n", k, n)
+					_, _ = fmt.Fprintf(os.Stdout, "%s\t%d\n", k, n)
 				}
 				return nil
 			},
@@ -87,7 +87,7 @@ func (a *App) cacheCmd() *cobra.Command {
 			Use:   "path",
 			Short: "Print the cache directory",
 			RunE: func(_ *cobra.Command, _ []string) error {
-				fmt.Fprintln(os.Stdout, a.cfg.CacheDir())
+				_, _ = fmt.Fprintln(os.Stdout, a.cfg.CacheDir())
 				return nil
 			},
 		},
@@ -99,7 +99,7 @@ func (a *App) cacheCmd() *cobra.Command {
 				if err != nil {
 					return err
 				}
-				fmt.Fprintf(os.Stdout, "%d files, %s\n", files, humanize.Bytes(uint64(bytes)))
+				_, _ = fmt.Fprintf(os.Stdout, "%d files, %s\n", files, humanize.Bytes(uint64(bytes)))
 				return nil
 			},
 		},
@@ -110,7 +110,7 @@ func (a *App) cacheCmd() *cobra.Command {
 				if err := a.cache.Clear(); err != nil {
 					return err
 				}
-				fmt.Fprintln(os.Stderr, "cache cleared")
+				_, _ = fmt.Fprintln(os.Stderr, "cache cleared")
 				return nil
 			},
 		},

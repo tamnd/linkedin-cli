@@ -48,7 +48,7 @@ func (a *App) urlCmd() *cobra.Command {
 			default:
 				return codeError(exitUsage, fmt.Errorf("unknown kind %q (want profile|company|school|job)", kind))
 			}
-			fmt.Fprintln(os.Stdout, u)
+			_, _ = fmt.Fprintln(os.Stdout, u)
 			return nil
 		},
 	}

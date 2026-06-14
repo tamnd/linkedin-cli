@@ -192,7 +192,7 @@ func (a *App) progressf(format string, args ...any) {
 	if a.quiet {
 		return
 	}
-	fmt.Fprintf(os.Stderr, format+"\n", args...)
+	_, _ = fmt.Fprintf(os.Stderr, format+"\n", args...)
 }
 
 // mapFetchErr converts a library error into the right exit code.
